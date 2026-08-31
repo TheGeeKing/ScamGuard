@@ -25,6 +25,16 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Manage operational configuration through admin slash commands backed by SQLite.
 - Expose a small framework-free `/health` endpoint for Compose health checks.
 - Treat `imagehash-web` as a candidate pending a Bun/Linux compatibility spike and fixture benchmark.
+- Delete every tracked message from an enforced member during the preceding five-minute Cleanup window.
+- Create one Assessment per Discord message and include evidence from every eligible attachment.
+- Provide admin commands for status, moderation mode, thresholds, timeout duration, log channel, ignored channels, trusted roles, and false-positive review.
+- Require `Manage Guild` for configuration and review commands; never require Administrator.
+- Analyze every eligible attachment without a per-message count limit, using bounded processing to control resource use.
+- Default to 10 MiB per attachment and a 10-second download timeout.
+- Recognize PNG, JPEG, GIF, and WebP by file signature.
+- Hash an entire GIF file without decoding frames.
+- Ignore ScamGuard and other bots by default; analyze webhooks with deletion-only enforcement.
+- Do not record an ADR for the Bun baseline; the earlier Python choice was provisional and no code depends on it.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -33,6 +43,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Configured the repository's agent workflow, issue tracker, triage vocabulary, and domain-doc layout.
 - Selected the initial deployable slice and runtime architecture.
 - Selected the initial moderator workflow and operational boundaries.
+- Defined message cleanup, attachment handling, and the initial admin command surface.
 
 ## Next
 

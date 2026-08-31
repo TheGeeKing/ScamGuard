@@ -5,7 +5,7 @@ ScamGuard detects image-based scam floods in Discord servers and records why eac
 ## Language
 
 **Assessment**:
-The complete, explainable evaluation of one Discord message and its author, identified independently from the message itself.
+The complete, explainable evaluation of one Discord message and its author, including evidence from every eligible attachment on that message.
 _Avoid_: Scan, verdict
 
 **Signal**:
@@ -35,3 +35,7 @@ _Avoid_: Alert, log entry
 **False positive**:
 An Incident that a moderator has explicitly reviewed and determined was legitimate.
 _Avoid_: Error, safe fingerprint
+
+**Cleanup window**:
+The five minutes preceding an enforcement decision during which every tracked message from the affected member is eligible for deletion.
+_Avoid_: History scan, channel purge
