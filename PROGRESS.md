@@ -18,6 +18,13 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Support both `bun run dev` and a production-like local Compose workflow.
 - Validate Discord integration with mocked tests and a documented manual smoke test.
 - Preserve the feature intent in `plan.md` while minimally translating Python-specific choices to Bun.
+- Target one configured Discord server initially while retaining guild IDs in domain records.
+- Let authorized moderators register every image attachment in a selected message as a Known scam fingerprint.
+- Provide moderator correction paths for safe fingerprints and false-positive Incidents.
+- Clean up a timed-out member's recent messages within a five-minute window.
+- Manage operational configuration through admin slash commands backed by SQLite.
+- Expose a small framework-free `/health` endpoint for Compose health checks.
+- Treat `imagehash-web` as a candidate pending a Bun/Linux compatibility spike and fixture benchmark.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -25,6 +32,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 
 - Configured the repository's agent workflow, issue tracker, triage vocabulary, and domain-doc layout.
 - Selected the initial deployable slice and runtime architecture.
+- Selected the initial moderator workflow and operational boundaries.
 
 ## Next
 

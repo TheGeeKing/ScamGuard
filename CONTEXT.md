@@ -17,7 +17,7 @@ The deterministic processing route that can reach a moderation decision without 
 _Avoid_: Synchronous AI path, basic mode
 
 **Known scam fingerprint**:
-A moderator-confirmed digest representing malicious image content.
+A moderator-confirmed digest representing malicious image content. A message may register several Known scam fingerprints when it contains several image attachments.
 _Avoid_: Automatic blacklist entry
 
 **Hot fingerprint**:
@@ -27,3 +27,11 @@ _Avoid_: Permanent fingerprint
 **Moderation mode**:
 The configured enforcement level: `dry-run` records intended actions, `delete` removes offending messages, and `enforce` may also timeout members.
 _Avoid_: Environment, safety level
+
+**Incident**:
+The durable record of an Assessment that requested or applied moderation, including its Signals, desired actions, and actual outcomes.
+_Avoid_: Alert, log entry
+
+**False positive**:
+An Incident that a moderator has explicitly reviewed and determined was legitimate.
+_Avoid_: Error, safe fingerprint
