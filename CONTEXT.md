@@ -39,3 +39,15 @@ _Avoid_: Error, safe fingerprint
 **Cleanup window**:
 The five minutes preceding an enforcement decision during which every tracked message from the affected member is eligible for deletion.
 _Avoid_: History scan, channel purge
+
+**Community report**:
+An opt-in submission of flagged image evidence and the associated Discord user ID to ScamGuard's future central review service.
+_Avoid_: Automatic global ban, telemetry
+
+**Global reputation signal**:
+Weak, expiring evidence that a Discord user ID was recently associated with similar scam behavior in another opted-in server.
+_Avoid_: Global blacklist, ban list
+
+**Global fingerprint feed**:
+A future collection of centrally reviewed scam fingerprints that opted-in ScamGuard installations may consume.
+_Avoid_: Automatic learning, raw report stream

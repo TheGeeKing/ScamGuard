@@ -35,6 +35,17 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Hash an entire GIF file without decoding frames.
 - Ignore ScamGuard and other bots by default; analyze webhooks with deletion-only enforcement.
 - Do not record an ADR for the Bun baseline; the earlier Python choice was provisional and no code depends on it.
+- Use mutually exclusive scoring buckets within a Signal group so only its strongest satisfied condition contributes.
+- Persist Incidents scoring at least 50, notify moderators, and discard lower-scoring Assessments after five minutes.
+- In dry-run mode, record intended actions without creating local blocked state or applying Discord actions.
+- **Mark as scam** stores every eligible attachment hash and applies mode-appropriate moderation to the selected message and sender.
+- **Mark as safe** removes selected-image hashes and marks linked Incidents false-positive without automatically reversing timeouts.
+- Permit in-memory burst, cleanup, and blocked-user state to reset on process restart in v1.
+- Retain Incidents for 30 days by default and expose `/scam retention <days>`.
+- Plan community reporting as a later, explicit opt-in feature rather than part of the first release.
+- A Community report may contain flagged image bytes, hashes, Signals, timestamp, pseudonymous installation ID, and flagged Discord user ID.
+- Treat cross-server user reputation as a weak, expiring Signal that can never enforce by itself.
+- Promote Community reports into a signed Global fingerprint feed only after manual review; consuming installations opt in and retain local disable/override controls.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -44,6 +55,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Selected the initial deployable slice and runtime architecture.
 - Selected the initial moderator workflow and operational boundaries.
 - Defined message cleanup, attachment handling, and the initial admin command surface.
+- Defined initial scoring persistence, moderator corrections, and future community-reporting boundaries.
 
 ## Next
 
