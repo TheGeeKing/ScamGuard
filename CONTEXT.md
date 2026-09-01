@@ -55,3 +55,7 @@ _Avoid_: Automatic learning, raw report stream
 **Image source**:
 An image attachment or rendered embed selected for fingerprinting, preferring Discord CDN/proxy bytes and falling back to a guarded external origin only when no safe Discord proxy exists.
 _Avoid_: URL found in message text, arbitrary remote resource
+
+**Evidence sample**:
+A maintainer-supplied, non-private scam image committed for peer review. Pending samples never affect detection; approved samples produce reviewed fingerprints for the general seed set.
+_Avoid_: Runtime capture, Community report

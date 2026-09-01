@@ -8,7 +8,7 @@ Discord servers are vulnerable to compromised accounts that rapidly post the sam
 
 ## Solution
 
-Build a single-server ScamGuard release on Bun, TypeScript, and discord.js. The bot evaluates each eligible Discord message through a deterministic Signal ledger, applies grouped scoring rules, persists meaningful Incidents and moderator-confirmed fingerprints in SQLite, and enforces configurable dry-run, delete, or timeout behavior. It analyzes every attachment and visible embed image without writing raw images to disk, prefers Discord-hosted media, and uses a guarded external-origin fallback when Discord supplies no proxy.
+Build a single-server ScamGuard release on Bun, TypeScript, discord.js, and Drizzle ORM over Bun SQLite. The bot evaluates each eligible Discord message through a deterministic Signal ledger, applies grouped scoring rules, persists meaningful Incidents and moderator-confirmed fingerprints, and enforces configurable dry-run, delete, or timeout behavior. It analyzes every attachment and visible embed image without writing runtime captures to disk, prefers Discord-hosted media, and uses a guarded external-origin fallback when Discord supplies no proxy.
 
 Administrators configure the bot through Discord commands, review explainable Incidents, register all images in a selected scam message, and reverse local fingerprint mistakes. The release runs directly with Bun and through a production-like Compose workflow. It does not require Python, OCR, perceptual hashing, QR analysis, Valkey, Ollama, or a separate worker.
 
@@ -41,7 +41,7 @@ Administrators configure the bot through Discord commands, review explainable In
 25. As a moderator, I want suspicious Assessments persisted and reported, so that borderline behavior can be reviewed.
 26. As a moderator, I want each applied or intended action recorded in an Incident, so that outcomes are auditable.
 27. As an operator, I want Incidents removed after the configured retention period, so that data does not accumulate indefinitely.
-28. As an operator, I want no message text or raw image stored in v1, so that local persistence is minimal.
+28. As an operator, I want no message text or runtime-captured raw image stored in v1, so that local persistence is minimal.
 29. As a moderator, I want **Mark as scam** to register every eligible image on the selected message, so that complete campaigns enter the local fingerprint set.
 30. As a moderator, I want **Mark as scam** to act according to the current moderation mode, so that review and enforcement agree.
 31. As a moderator, I want **Mark as safe** to remove selected-image fingerprints, so that mistakes can be corrected.
@@ -84,10 +84,12 @@ Administrators configure the bot through Discord commands, review explainable In
 68. As a future server operator, I want cross-server user reputation to be weak and expiring, so that it can accelerate detection without becoming a global ban.
 69. As a future feed consumer, I want only manually reviewed fingerprints distributed in a signed feed, so that poisoned reports cannot become automatic global policy.
 70. As a future feed consumer, I want local safe overrides to win, so that central data never removes local control.
+71. As a maintainer, I want to commit non-private candidate Evidence samples for peer review, so that general scam fingerprints have visible provenance.
+72. As an operator, I want only approved Evidence samples to seed detection, so that pending review cannot change moderation behavior.
 
 ## Implementation Decisions
 
-- Use Bun, TypeScript, discord.js, Bun SQLite, bun:test, Biome, Docker, and Compose.
+- Use Bun, TypeScript, discord.js, Drizzle ORM with the native `bun:sqlite` driver, Drizzle Kit migrations, bun:test, Biome, Docker, and Compose.
 - Target one required guild and register commands in that guild. Retain guild identifiers in all durable domain records.
 - Require only the Discord token and guild ID at startup. Other environment values are defaults; guild overrides exist only after an administrator changes them.
 - Use one Bun process and in-memory rolling state. Restarting may reset recent windows, cleanup history, and the local blocked cache; Discord timeouts and SQLite data remain.
@@ -102,13 +104,14 @@ Administrators configure the bot through Discord commands, review explainable In
 - Use Discord attachment URLs and embed image/thumbnail media. Prefer approved Discord CDN/proxy hosts.
 - External fallback accepts only HTTP port 80 or HTTPS port 443, rejects credentials and disallowed IP ranges, pins a validated address, revalidates at most two redirects, and carries no ambient credentials.
 - Default image limits are 10 MiB per image and ten seconds per download. Process every eligible image with bounded concurrency and continue after individual failures.
-- Validate PNG, JPEG, GIF, and WebP signatures. Do not decode pixels or persist raw image bytes in the initial release.
+- Validate PNG, JPEG, GIF, and WebP signatures. Do not decode pixels or persist runtime-captured raw image bytes in the initial release.
 - Make fetch/processing failures diagnostic, named, and non-scoring.
 - Ignore ScamGuard and other bots by default. Analyze webhooks with deletion-only enforcement.
 - Require Manage Guild for operational commands. Do not request Administrator or View Audit Log.
 - Send first-run setup once to the system channel, then the server owner by DM, then rely on the status command.
 - Expose a framework-free health endpoint, defaulting to `0.0.0.0:3000` in the container, with component states only.
 - Keep structured logs free of tokens, raw images, and message text.
+- Keep candidate Evidence samples separate from approved samples. Generate a reviewed seed fingerprint manifest only from approved samples; the runtime never writes to either evidence directory.
 - Keep perceptual hashing, QR/URL analysis, OCR, Valkey workers, Ollama, Prometheus metrics, benchmarks, multi-server operation, and community reporting as later roadmap phases.
 - Treat `imagehash-web` as the leading perceptual/crop-resistant candidate only after Bun/Linux compatibility, hash-stability, performance, and fixture accuracy evaluation.
 - Future Community reports use encrypted central review storage. Unreviewed images expire after 30 days; rejected images are deleted; accepted retention follows an explicit review policy. Consumers receive signed hashes, not raw images.

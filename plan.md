@@ -32,7 +32,7 @@ Use:
 
 * Bun and TypeScript
 * discord.js
-* Bun's built-in SQLite driver for persistent configuration, fingerprint and moderation data
+* Drizzle ORM with Bun's built-in SQLite driver for persistent configuration, fingerprint and moderation data
 * in-memory rolling state for the initial release
 * bun:test
 * Biome for formatting and linting
@@ -1583,6 +1583,8 @@ scamguard/
 ├── bun.lock
 ├── tsconfig.json
 ├── biome.json
+├── drizzle.config.ts
+├── drizzle/
 ├── README.md
 ├── compose.yaml
 ├── Dockerfile
@@ -1597,6 +1599,11 @@ scamguard/
 │   ├── state/
 │   ├── storage/
 │   └── health/
+│
+├── evidence/
+│   ├── pending/
+│   ├── approved/
+│   └── fingerprints.json
 │
 ├── tests/
 │   ├── fixtures/
@@ -1941,6 +1948,10 @@ domain allow/block lists
 moderation incidents
 moderator reviews
 ```
+
+Use Drizzle ORM with the native `bun:sqlite` driver and committed generated migrations.
+
+Maintainers may commit non-private Evidence samples for peer review. Pending samples never affect detection. A checked script derives the general seed fingerprint manifest only from approved samples. The runtime never writes into the evidence directories.
 
 Keep ephemeral:
 

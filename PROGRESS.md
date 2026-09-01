@@ -8,6 +8,7 @@ Initial-release specification (`to-spec`). No application code has been written 
 
 - Use Bun and TypeScript instead of Python.
 - Use `discord.js` for the Discord client.
+- Use Drizzle ORM with Bun SQLite and committed Drizzle migrations.
 - Do not implement Python components.
 - Do not implement OCR, AI, perceptual hashing, QR analysis, or decoded-image analysis in the first release.
 - Retain exact SHA-256 image fingerprinting in the first release.
@@ -70,6 +71,7 @@ Initial-release specification (`to-spec`). No application code has been written 
 - Resolve and pin public destination IPs, reject local/private/reserved destinations, revalidate at most two redirects, and send no ambient credentials.
 - Apply the standard byte, timeout, and file-signature limits to external Image sources.
 - Treat external fetch failures as non-scoring diagnostics and continue behavioral analysis.
+- Keep peer-reviewed Evidence samples in pending/approved repository folders and derive the general seed fingerprint manifest only from approved samples.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
