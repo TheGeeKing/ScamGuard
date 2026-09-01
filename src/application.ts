@@ -4,10 +4,16 @@ import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { loadEvidence } from "./fingerprints/evidence-loader";
+import {
+  applyFingerprintReview,
+  fingerprintClassificationSignals,
+  shouldPromoteHotFingerprint,
+} from "./fingerprints/moderator-actions";
 import { startHealthServer } from "./health/http";
 import {
   canFetchImageSource,
   fingerprintImages,
+  type ImageSource,
   isApprovedDiscordMediaUrl,
 } from "./images/discord-images";
 import { fetchExternalImage } from "./images/external-fetch";
@@ -50,6 +56,18 @@ export function createApplication(
   let dispatchMessage = async (
     _event: Extract<ScamGuardEvent, { kind: "message" }>,
   ): Promise<void> => {};
+  const fingerprintSources = (sources: ImageSource[]) =>
+    fingerprintImages(sources, {
+      concurrency: 4,
+      maxBytes: config.maxImageBytes,
+      timeoutMs: config.imageDownloadTimeoutMs,
+      validateSource: (source) =>
+        canFetchImageSource(source, config.externalImageFetchEnabled),
+      fetch: (url, signal) =>
+        isApprovedDiscordMediaUrl(url)
+          ? fetch(url, { signal, redirect: "error" })
+          : fetchExternalImage(url, signal),
+    });
   const discord: DiscordBot = createDiscordBot({
     token: config.discordToken,
     guildId: config.guildId,
@@ -57,28 +75,69 @@ export function createApplication(
     databaseAvailable: storage.isAvailable,
     onSettingsChanged: refreshSettings,
     onEligibleMessage: (event) => dispatchMessage(event),
+    onFingerprintReview: async (review) => {
+      const fingerprints = await fingerprintSources(review.imageSources);
+      const result = await applyFingerprintReview(
+        {
+          action: review.action,
+          guildId: review.guildId,
+          moderatorId: review.moderatorId,
+          sha256: fingerprints.flatMap((outcome) =>
+            outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+          ),
+        },
+        storage.fingerprints,
+        new Date(),
+      );
+      await scamGuard.dispatch({
+        kind: "moderator-review",
+        guildId: review.guildId,
+        messageId: review.messageId,
+        action: review.action,
+        sha256: fingerprints.flatMap((outcome) =>
+          outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+        ),
+      });
+      return result.message;
+    },
   });
   const behavior = createBehaviorTracker(() => new Date());
   const evidenceHashes = new Set<string>();
   const scamGuard = createScamGuard({
     now: () => new Date(),
     getSettings: storage.guildSettings.get,
-    saveIncident: storage.incidents.save,
+    saveIncident: async (incident) => {
+      await storage.incidents.save(incident);
+      if (!shouldPromoteHotFingerprint(incident)) return;
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      for (const sha256 of incident.imageEvidence.flatMap((evidence) =>
+        evidence.sha256 ? [evidence.sha256] : [],
+      )) {
+        if (
+          (await storage.fingerprints.classify(
+            incident.guildId,
+            sha256,
+            new Date(),
+          )) === "unknown"
+        ) {
+          await storage.fingerprints.markHot({
+            guildId: incident.guildId,
+            sha256,
+            expiresAt,
+          });
+        }
+      }
+    },
     notify: discord.notify,
     prepareMessage: async (event) => {
-      const fingerprints = await fingerprintImages(event.imageSources ?? [], {
-        concurrency: 4,
-        maxBytes: config.maxImageBytes,
-        timeoutMs: config.imageDownloadTimeoutMs,
-        validateSource: (source) =>
-          canFetchImageSource(source, config.externalImageFetchEnabled),
-        fetch: (url, signal) =>
-          isApprovedDiscordMediaUrl(url)
-            ? fetch(url, { signal, redirect: "error" })
-            : fetchExternalImage(url, signal),
-      });
+      const fingerprints = await fingerprintSources(event.imageSources ?? []);
       const imageDigests = fingerprints.flatMap((outcome) =>
         outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+      );
+      const classifications = await Promise.all(
+        imageDigests.map((digest) =>
+          storage.fingerprints.classify(event.guildId, digest, new Date()),
+        ),
       );
       return {
         imageEvidence: fingerprints.map((outcome) =>
@@ -92,13 +151,11 @@ export function createApplication(
             : { sourceId: outcome.sourceId, diagnostics: [outcome.diagnostic] },
         ),
         signals: [
-          ...imageDigests
-            .filter((digest) => evidenceHashes.has(digest))
-            .map((digest) => ({
-              key: `known-sha:${digest}`,
-              group: "known-fingerprint",
-              weight: 100,
-            })),
+          ...fingerprintClassificationSignals(
+            imageDigests,
+            classifications,
+            evidenceHashes,
+          ),
           ...(event.channelId
             ? behavior.observe({
                 guildId: event.guildId,

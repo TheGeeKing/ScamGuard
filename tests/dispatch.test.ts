@@ -138,4 +138,74 @@ describe("ScamGuard dispatch", () => {
     expect((await assess("delete", 40)).assessment?.intention).toBe("delete");
     expect((await assess("timeout", 60)).assessment?.intention).toBe("timeout");
   });
+
+  test("re-evaluates every recent Assessment sharing a reviewed image", async () => {
+    const incidents: IncidentRecord[] = [];
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => settings,
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {},
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [{ sourceId: "one", sha256: "a" }],
+      signals: [],
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-2",
+      userId: "user-2",
+      imageEvidence: [{ sourceId: "two", sha256: "a" }],
+      signals: [],
+    });
+    const review = {
+      kind: "moderator-review" as const,
+      guildId: "guild-1",
+      messageId: "message-1",
+      action: "scam" as const,
+      sha256: ["a"],
+    };
+
+    expect((await app.dispatch(review)).assessment?.score).toBe(100);
+    expect((await app.dispatch(review)).assessment?.score).toBe(100);
+    expect(incidents.map((incident) => incident.messageId)).toEqual([
+      "message-1",
+      "message-2",
+    ]);
+  });
+
+  test("removes matching fingerprint Signals after a safe review", async () => {
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => settings,
+      saveIncident: async () => {},
+      notify: async () => {},
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [{ sourceId: "one", sha256: "a" }],
+      signals: [
+        { key: "known-sha:a", group: "known-fingerprint", weight: 100 },
+      ],
+    });
+
+    const outcome = await app.dispatch({
+      kind: "moderator-review",
+      guildId: "guild-1",
+      messageId: "message-1",
+      action: "safe",
+      sha256: ["a"],
+    });
+
+    expect(outcome.assessment?.score).toBe(0);
+    expect(outcome.assessment?.intention).toBe("allow");
+  });
 });

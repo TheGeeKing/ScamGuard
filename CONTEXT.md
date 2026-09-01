@@ -57,5 +57,5 @@ An image attachment or rendered embed selected for fingerprinting, preferring Di
 _Avoid_: URL found in message text, arbitrary remote resource
 
 **Evidence sample**:
-A maintainer-supplied, non-private scam image committed for peer review. Pending samples never affect detection; approved samples produce reviewed fingerprints for the general seed set.
+A maintainer-supplied, non-private scam image committed under `evidence/` for peer review and fingerprinted when ScamGuard starts.
 _Avoid_: Runtime capture, Community report

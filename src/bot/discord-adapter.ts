@@ -2,14 +2,18 @@ import {
   type ChatInputCommandInteraction,
   Client,
   GatewayIntentBits,
+  type Message,
   MessageFlags,
   PermissionFlagsBits,
 } from "discord.js";
 import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
-import { selectDiscordImageSources } from "../images/discord-images";
+import {
+  type ImageSource,
+  selectDiscordImageSources,
+} from "../images/discord-images";
 import type { StoredGuildSettings } from "../storage/guild-settings";
 import { type AdminCommand, handleAdminCommand } from "./admin-commands";
-import { scamCommand } from "./discord-commands";
+import { applicationCommands } from "./discord-commands";
 
 export const discordGatewayIntents = [
   GatewayIntentBits.Guilds,
@@ -43,6 +47,26 @@ export function shouldAssessMessage(
     !scope.ignoredChannelIds.includes(message.channelId) &&
     !message.memberRoleIds.some((role) => scope.trustedRoleIds.includes(role))
   );
+}
+
+function messageImageSources(message: Message): ImageSource[] {
+  return selectDiscordImageSources({
+    attachments: message.attachments.map((attachment) => ({
+      id: attachment.id,
+      url: attachment.url,
+      contentType: attachment.contentType,
+    })),
+    embeds: message.embeds.map((embed) => ({
+      image: embed.image
+        ? { url: embed.image.url, proxyUrl: embed.image.proxyURL }
+        : null,
+      thumbnail: embed.thumbnail
+        ? { url: embed.thumbnail.url, proxyUrl: embed.thumbnail.proxyURL }
+        : null,
+      authorIconUrl: embed.author?.iconURL,
+      footerIconUrl: embed.footer?.iconURL,
+    })),
+  });
 }
 
 type OnboardingPort = {
@@ -167,12 +191,21 @@ export function createDiscordBot(options: {
     event: Extract<ScamGuardEvent, { kind: "message" }>,
   ): Promise<void> | void;
   onSettingsChanged?(): Promise<void> | void;
+  onFingerprintReview?(review: {
+    action: "scam" | "safe";
+    guildId: string;
+    moderatorId: string;
+    messageId: string;
+    imageSources: ImageSource[];
+  }): Promise<string>;
 }): DiscordBot {
   const client = new Client({ intents: discordGatewayIntents });
 
   client.once("clientReady", async () => {
     const guild = await client.guilds.fetch(options.guildId);
-    await guild.commands.set([scamCommand.toJSON()]);
+    await guild.commands.set(
+      applicationCommands.map((command) => command.toJSON()),
+    );
     const instructions =
       "ScamGuard is installed. Run `/scam status`, then configure a moderation log channel and choose a mode.";
     await runOnboarding({
@@ -202,6 +235,37 @@ export function createDiscordBot(options: {
   });
 
   client.on("interactionCreate", async (interaction) => {
+    if (interaction.isMessageContextMenuCommand()) {
+      if (
+        interaction.guildId !== options.guildId ||
+        !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)
+      ) {
+        await interaction.reply({
+          content: "Manage Server permission is required.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      const action =
+        interaction.commandName === "Mark as scam"
+          ? "scam"
+          : interaction.commandName === "Mark as safe"
+            ? "safe"
+            : null;
+      if (!action) return;
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const content = await options.onFingerprintReview?.({
+        action,
+        guildId: interaction.guildId,
+        moderatorId: interaction.user.id,
+        messageId: interaction.targetMessage.id,
+        imageSources: messageImageSources(interaction.targetMessage),
+      });
+      await interaction.editReply(
+        content ?? "Fingerprint review is unavailable.",
+      );
+      return;
+    }
     if (!interaction.isChatInputCommand() || interaction.commandName !== "scam")
       return;
     if (interaction.guildId !== options.guildId) {
@@ -262,23 +326,7 @@ export function createDiscordBot(options: {
         },
       )
     ) {
-      const imageSources = selectDiscordImageSources({
-        attachments: message.attachments.map((attachment) => ({
-          id: attachment.id,
-          url: attachment.url,
-          contentType: attachment.contentType,
-        })),
-        embeds: message.embeds.map((embed) => ({
-          image: embed.image
-            ? { url: embed.image.url, proxyUrl: embed.image.proxyURL }
-            : null,
-          thumbnail: embed.thumbnail
-            ? { url: embed.thumbnail.url, proxyUrl: embed.thumbnail.proxyURL }
-            : null,
-          authorIconUrl: embed.author?.iconURL,
-          footerIconUrl: embed.footer?.iconURL,
-        })),
-      });
+      const imageSources = messageImageSources(message);
       await options.onEligibleMessage?.({
         kind: "message",
         guildId: message.guildId as string,

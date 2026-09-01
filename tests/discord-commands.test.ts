@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { ApplicationCommandOptionType, ChannelType } from "discord.js";
-import { scamCommand } from "../src/bot/discord-commands";
+import { applicationCommands, scamCommand } from "../src/bot/discord-commands";
 
 describe("Discord command registration", () => {
+  test("registers moderator message actions", () => {
+    expect(applicationCommands.map((command) => command.toJSON().name)).toEqual(
+      ["scam", "Mark as scam", "Mark as safe"],
+    );
+  });
+
   test("defines the complete guild-scoped scam command", () => {
     const definition = scamCommand.toJSON();
 

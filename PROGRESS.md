@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–06 complete; ticket 07 is the blocker frontier.
+Tickets 01–07 complete; ticket 08 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -71,7 +71,7 @@ Tickets 01–06 complete; ticket 07 is the blocker frontier.
 - Resolve and pin public destination IPs, reject local/private/reserved destinations, revalidate at most two redirects, and send no ambient credentials.
 - Apply the standard byte, timeout, and file-signature limits to external Image sources.
 - Treat external fetch failures as non-scoring diagnostics and continue behavioral analysis.
-- Keep peer-reviewed Evidence samples in pending/approved repository folders and derive the general seed fingerprint manifest only from approved samples.
+- Keep peer-reviewed raw Evidence images directly under `evidence/` and fingerprint them when ScamGuard starts.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -95,7 +95,8 @@ Tickets 01–06 complete; ticket 07 is the blocker frontier.
 - Completed ticket 04: rolling behavior windows, exclusive flood buckets, weak account-age evidence, and Cleanup-window tracking.
 - Completed ticket 05: Discord Image-source selection, bounded streaming SHA-256, signature validation, and failure isolation.
 - Completed ticket 06: guarded external embed fetching with public-IP validation, pinned transport, and redirect revalidation.
+- Completed ticket 07: raw curated Evidence loading, local known/safe/hot fingerprints, moderator message actions, and re-evaluation.
 
 ## Next
 
-- Implement ticket 07: manage exact scam fingerprints and reviewed evidence.
+- Implement ticket 08: enforce moderation decisions safely.

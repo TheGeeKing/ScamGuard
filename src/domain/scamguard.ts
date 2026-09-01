@@ -50,7 +50,13 @@ export type ScamGuardEvent =
       signals: Signal[];
     }
   | { kind: "admin"; guildId: string }
-  | { kind: "moderator-review"; guildId: string; incidentId: string }
+  | {
+      kind: "moderator-review";
+      guildId: string;
+      messageId: string;
+      action: "scam" | "safe";
+      sha256: string[];
+    }
   | { kind: "scheduled-cleanup"; guildId: string };
 
 export type DispatchOutcome =
@@ -114,6 +120,7 @@ export function createScamGuard(ports: Ports): {
   activeAssessmentCount(): number;
 } {
   const handledMessages = new Set<string>();
+  const persistedMessages = new Set<string>();
   const recent = new Map<string, Assessment>();
 
   const expire = (): void => {
@@ -123,9 +130,70 @@ export function createScamGuard(ports: Ports): {
     }
   };
 
+  const persist = async (
+    identity: string,
+    assessment: Assessment,
+    settings: EffectiveGuildSettings,
+  ): Promise<void> => {
+    if (persistedMessages.has(identity)) return;
+    persistedMessages.add(identity);
+    const incident: IncidentRecord = {
+      ...assessment,
+      moderationMode: settings.moderationMode,
+      intendedActions: intendedActions(assessment.intention),
+    };
+    await ports.saveIncident(incident);
+    if (settings.moderationLogChannelId) await ports.notify(incident);
+  };
+
   return {
     dispatch: async (event) => {
       expire();
+      if (event.kind === "moderator-review") {
+        const settings = await ports.getSettings(event.guildId);
+        const reviewed = new Set(event.sha256);
+        let selected: Assessment | undefined;
+        for (const [identity, current] of recent) {
+          const matches = current.imageEvidence.some(
+            (evidence) => evidence.sha256 && reviewed.has(evidence.sha256),
+          );
+          if (current.guildId !== event.guildId || !matches) continue;
+          const retained = current.signals.filter(
+            (signal) =>
+              ![...reviewed].some(
+                (sha256) =>
+                  signal.key === `known-sha:${sha256}` ||
+                  signal.key === `hot-sha:${sha256}`,
+              ),
+          );
+          const signals = activeSignals([
+            ...retained,
+            ...(event.action === "scam"
+              ? [...reviewed].map((sha256) => ({
+                  key: `known-sha:${sha256}`,
+                  group: "known-fingerprint",
+                  weight: 100,
+                }))
+              : []),
+          ]);
+          const score = signals.reduce(
+            (total, signal) => total + signal.weight,
+            0,
+          );
+          const assessment: Assessment = {
+            ...current,
+            signals,
+            score,
+            intention: intentionFor(score, settings),
+          };
+          recent.set(identity, assessment);
+          if (score >= 50) await persist(identity, assessment, settings);
+          if (current.messageId === event.messageId) selected = assessment;
+        }
+        return selected
+          ? { kind: "assessed", assessment: selected, appliedActions: [] }
+          : { kind: "accepted" };
+      }
       if (event.kind !== "message") return { kind: "accepted" };
 
       const identity = `${event.guildId}:${event.messageId}`;
@@ -154,17 +222,8 @@ export function createScamGuard(ports: Ports): {
         intention: intentionFor(score, settings),
       };
 
-      if (score >= 50) {
-        const incident: IncidentRecord = {
-          ...assessment,
-          moderationMode: settings.moderationMode,
-          intendedActions: intendedActions(assessment.intention),
-        };
-        await ports.saveIncident(incident);
-        if (settings.moderationLogChannelId) await ports.notify(incident);
-      } else {
-        recent.set(identity, assessment);
-      }
+      recent.set(identity, assessment);
+      if (score >= 50) await persist(identity, assessment, settings);
 
       return { kind: "assessed", assessment, appliedActions: [] };
     },

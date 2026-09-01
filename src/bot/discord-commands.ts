@@ -1,5 +1,7 @@
 import {
+  ApplicationCommandType,
   ChannelType,
+  ContextMenuCommandBuilder,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
@@ -128,3 +130,19 @@ export const scamCommand = new SlashCommandBuilder()
         option.setName("role").setDescription("Role").setRequired(true),
       ),
   );
+
+export const markAsScamCommand = new ContextMenuCommandBuilder()
+  .setName("Mark as scam")
+  .setType(ApplicationCommandType.Message)
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+export const markAsSafeCommand = new ContextMenuCommandBuilder()
+  .setName("Mark as safe")
+  .setType(ApplicationCommandType.Message)
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+export const applicationCommands = [
+  scamCommand,
+  markAsScamCommand,
+  markAsSafeCommand,
+];

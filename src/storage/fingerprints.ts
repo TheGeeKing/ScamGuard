@@ -31,8 +31,10 @@ export type FingerprintRepository = {
     guildId: string,
     sha256: string,
     now: Date,
-  ): Promise<"known" | "safe" | "hot" | "unknown">;
+  ): Promise<FingerprintClassification>;
 };
+
+export type FingerprintClassification = "known" | "safe" | "hot" | "unknown";
 
 export function createFingerprintRepository(
   database: BunSQLiteDatabase,
