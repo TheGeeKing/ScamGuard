@@ -46,6 +46,14 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - A Community report may contain flagged image bytes, hashes, Signals, timestamp, pseudonymous installation ID, and flagged Discord user ID.
 - Treat cross-server user reputation as a weak, expiring Signal that can never enforce by itself.
 - Promote Community reports into a signed Global fingerprint feed only after manual review; consuming installations opt in and retain local disable/override controls.
+- Register all eligible images from a moderator-marked scam message, including low-variation or apparently harmless campaign panels.
+- Keep moderator-added fingerprints scoped to the configured server initially.
+- Enforce in this order: local block, timeout attempt, triggering-message deletion, Cleanup-window deletion, outcome persistence, moderator notification.
+- Serialize enforcement per user so concurrent messages produce one timeout attempt.
+- Continue deletion and cleanup when a timeout fails, recording each action outcome separately.
+- Continue processing remaining attachments when one fails; processing diagnostics are explainable but non-scoring.
+- Let local safe overrides take precedence over the future Global fingerprint feed.
+- Gate implementation commits with `bun test`, TypeScript type-checking, Biome formatting/linting, and the smallest relevant smoke check.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -56,6 +64,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Selected the initial moderator workflow and operational boundaries.
 - Defined message cleanup, attachment handling, and the initial admin command surface.
 - Defined initial scoring persistence, moderator corrections, and future community-reporting boundaries.
+- Defined enforcement ordering, partial-failure behavior, and quality gates.
 
 ## Next
 

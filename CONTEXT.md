@@ -17,7 +17,7 @@ The deterministic processing route that can reach a moderation decision without 
 _Avoid_: Synchronous AI path, basic mode
 
 **Known scam fingerprint**:
-A moderator-confirmed digest representing malicious image content. A message may register several Known scam fingerprints when it contains several image attachments.
+A moderator-confirmed digest representing malicious image content. Marking a message as scam registers every eligible attachment because apparently harmless panels may be campaign material or evasion variants.
 _Avoid_: Automatic blacklist entry
 
 **Hot fingerprint**:
