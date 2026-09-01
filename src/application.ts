@@ -3,7 +3,12 @@ import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { startHealthServer } from "./health/http";
-import { fingerprintImages } from "./images/discord-images";
+import {
+  canFetchImageSource,
+  fingerprintImages,
+  isApprovedDiscordMediaUrl,
+} from "./images/discord-images";
+import { fetchExternalImage } from "./images/external-fetch";
 import { openStorage } from "./storage/database";
 
 export type HealthStatus = {
@@ -62,7 +67,12 @@ export function createApplication(
         concurrency: 4,
         maxBytes: config.maxImageBytes,
         timeoutMs: config.imageDownloadTimeoutMs,
-        fetch: (url, signal) => fetch(url, { signal, redirect: "error" }),
+        validateSource: (source) =>
+          canFetchImageSource(source, config.externalImageFetchEnabled),
+        fetch: (url, signal) =>
+          isApprovedDiscordMediaUrl(url)
+            ? fetch(url, { signal, redirect: "error" })
+            : fetchExternalImage(url, signal),
       });
       const imageDigests = fingerprints.flatMap((outcome) =>
         outcome.status === "fingerprinted" ? [outcome.sha256] : [],

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  canFetchImageSource,
   fingerprintImages,
   selectDiscordImageSources,
 } from "../src/images/discord-images";
@@ -36,13 +37,33 @@ describe("Discord image fingerprinting", () => {
             authorIconUrl: "https://cdn.discordapp.com/decorative.png",
             footerIconUrl: "https://cdn.discordapp.com/footer.png",
           },
+          {
+            image: {
+              url: "https://external.example/image.png",
+              proxyUrl: null,
+            },
+          },
         ],
       }).map((source) => source.url),
     ).toEqual([
       "https://cdn.discordapp.com/a.png",
       "https://media.discordapp.net/proxy.png",
       "https://cdn.discordapp.com/thumb.png",
+      "https://external.example/image.png",
     ]);
+    expect(
+      selectDiscordImageSources({
+        attachments: [],
+        embeds: [{ image: { url: "https://external.example/image.png" } }],
+      })[0]?.transport,
+    ).toBe("external");
+    const external = {
+      id: "external",
+      url: "https://external.example/image.png",
+      transport: "external" as const,
+    };
+    expect(canFetchImageSource(external, true)).toBe(true);
+    expect(canFetchImageSource(external, false)).toBe(false);
   });
 
   test("streams every image with bounded concurrency and isolates failures", async () => {

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–05 complete; ticket 06 is the blocker frontier.
+Tickets 01–06 complete; ticket 07 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -94,7 +94,8 @@ Tickets 01–05 complete; ticket 06 is the blocker frontier.
 - Completed ticket 03: deterministic dispatch, grouped Signal scoring, expiring Assessments, and durable Incidents.
 - Completed ticket 04: rolling behavior windows, exclusive flood buckets, weak account-age evidence, and Cleanup-window tracking.
 - Completed ticket 05: Discord Image-source selection, bounded streaming SHA-256, signature validation, and failure isolation.
+- Completed ticket 06: guarded external embed fetching with public-IP validation, pinned transport, and redirect revalidation.
 
 ## Next
 
-- Implement ticket 06: fetch external embed images safely.
+- Implement ticket 07: manage exact scam fingerprints and reviewed evidence.

@@ -1,6 +1,7 @@
 export type ImageSource = {
   id: string;
   url: string;
+  transport?: "discord" | "external";
 };
 
 type DiscordMedia = { url: string; proxyUrl?: string | null };
@@ -37,6 +38,16 @@ export function isApprovedDiscordMediaUrl(value: string): boolean {
   }
 }
 
+export function canFetchImageSource(
+  source: ImageSource,
+  externalEnabled: boolean,
+): boolean {
+  return (
+    isApprovedDiscordMediaUrl(source.url) ||
+    (externalEnabled && source.transport === "external")
+  );
+}
+
 export function selectDiscordImageSources(
   message: DiscordMessageMedia,
 ): ImageSource[] {
@@ -45,6 +56,7 @@ export function selectDiscordImageSources(
     .map((attachment) => ({
       id: `attachment:${attachment.id}`,
       url: attachment.url,
+      transport: "discord" as const,
     }));
   for (const [embedIndex, embed] of message.embeds.entries()) {
     for (const [kind, media] of [
@@ -56,7 +68,11 @@ export function selectDiscordImageSources(
         media.proxyUrl && isApprovedDiscordMediaUrl(media.proxyUrl)
           ? media.proxyUrl
           : media.url;
-      sources.push({ id: `embed:${embedIndex}:${kind}`, url });
+      sources.push({
+        id: `embed:${embedIndex}:${kind}`,
+        url,
+        transport: isApprovedDiscordMediaUrl(url) ? "discord" : "external",
+      });
     }
   }
   return sources;
@@ -79,6 +95,7 @@ type FingerprintOptions = {
   maxBytes: number;
   timeoutMs: number;
   fetch(url: string, signal: AbortSignal): Promise<Response>;
+  validateSource?(source: ImageSource): boolean;
 };
 
 function identifyFormat(bytes: Uint8Array): ImageFormat | null {
@@ -106,7 +123,9 @@ async function fingerprintOne(
   source: ImageSource,
   options: FingerprintOptions,
 ): Promise<FingerprintOutcome> {
-  if (!isApprovedDiscordMediaUrl(source.url)) {
+  if (
+    !(options.validateSource?.(source) ?? isApprovedDiscordMediaUrl(source.url))
+  ) {
     return {
       status: "failed",
       sourceId: source.id,
