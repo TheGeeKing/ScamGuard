@@ -1,5 +1,6 @@
 import { createDiscordBot, type DiscordBot } from "./bot/discord-adapter";
 import { loadConfig } from "./config";
+import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { startHealthServer } from "./health/http";
 import { openStorage } from "./storage/database";
 
@@ -37,13 +38,26 @@ export function createApplication(
     const settings = await storage.guildSettings.get(config.guildId);
     moderationLogConfigured = settings.moderationLogChannelId !== null;
   };
+  let dispatchMessage = async (
+    _event: Extract<ScamGuardEvent, { kind: "message" }>,
+  ): Promise<void> => {};
   const discord: DiscordBot = createDiscordBot({
     token: config.discordToken,
     guildId: config.guildId,
     settings: storage.guildSettings,
     databaseAvailable: storage.isAvailable,
     onSettingsChanged: refreshSettings,
+    onEligibleMessage: (event) => dispatchMessage(event),
   });
+  const scamGuard = createScamGuard({
+    now: () => new Date(),
+    getSettings: storage.guildSettings.get,
+    saveIncident: storage.incidents.save,
+    notify: discord.notify,
+  });
+  dispatchMessage = async (event) => {
+    await scamGuard.dispatch(event);
+  };
 
   const health = (): HealthStatus => ({
     process: "ok",

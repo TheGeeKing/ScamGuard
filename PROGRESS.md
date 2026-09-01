@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–02 complete; ticket 03 is the blocker frontier.
+Tickets 01–03 complete; ticket 04 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -91,7 +91,8 @@ Tickets 01–02 complete; ticket 03 is the blocker frontier.
 - Published ten approved, dependency-ordered implementation tickets.
 - Completed ticket 01: bootable Bun service, validated configuration, Drizzle migrations, SQLite health, and production-like Compose workflow.
 - Completed ticket 02: guild-scoped Discord connection, admin configuration, Drizzle-backed overrides, onboarding, and message filtering.
+- Completed ticket 03: deterministic dispatch, grouped Signal scoring, expiring Assessments, and durable Incidents.
 
 ## Next
 
-- Implement ticket 03: evaluate explainable message assessments.
+- Implement ticket 04: detect cross-channel message and image floods.

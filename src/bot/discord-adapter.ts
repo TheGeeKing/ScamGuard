@@ -5,6 +5,7 @@ import {
   GatewayIntentBits,
   PermissionFlagsBits,
 } from "discord.js";
+import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
 import type { StoredGuildSettings } from "../storage/guild-settings";
 import { type AdminCommand, handleAdminCommand } from "./admin-commands";
 import { scamCommand } from "./discord-commands";
@@ -125,6 +126,7 @@ function parseAdminCommand(
 export type DiscordBot = {
   start(): Promise<void>;
   isConnected(): boolean;
+  notify(incident: IncidentRecord): Promise<void>;
   close(): void;
 };
 
@@ -133,7 +135,9 @@ export function createDiscordBot(options: {
   guildId: string;
   settings: StoredGuildSettings;
   databaseAvailable(): boolean;
-  onEligibleMessage?(messageId: string): Promise<void> | void;
+  onEligibleMessage?(
+    event: Extract<ScamGuardEvent, { kind: "message" }>,
+  ): Promise<void> | void;
   onSettingsChanged?(): Promise<void> | void;
 }): DiscordBot {
   const client = new Client({ intents: discordGatewayIntents });
@@ -217,13 +221,32 @@ export function createDiscordBot(options: {
         },
       )
     ) {
-      await options.onEligibleMessage?.(message.id);
+      await options.onEligibleMessage?.({
+        kind: "message",
+        guildId: message.guildId as string,
+        messageId: message.id,
+        userId: message.author.id,
+        imageEvidence: [],
+        signals: [],
+      });
     }
   });
 
   return {
     start: () => client.login(options.token).then(() => undefined),
     isConnected: () => client.isReady(),
+    notify: async (incident) => {
+      const settings = await options.settings.get(incident.guildId);
+      if (!settings.moderationLogChannelId) return;
+      const channel = await client.channels.fetch(
+        settings.moderationLogChannelId,
+      );
+      if (channel?.isSendable()) {
+        await channel.send(
+          `ScamGuard Incident: message ${incident.messageId}, score ${incident.score}, intention ${incident.intention}.`,
+        );
+      }
+    },
     close: () => client.destroy(),
   };
 }

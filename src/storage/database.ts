@@ -8,10 +8,12 @@ import {
   createGuildSettingsRepository,
   type StoredGuildSettings,
 } from "./guild-settings";
+import { createIncidentRepository, type IncidentRepository } from "./incidents";
 
 export type Storage = {
   isAvailable(): boolean;
   guildSettings: StoredGuildSettings;
+  incidents: IncidentRepository;
   close(): void;
 };
 
@@ -44,6 +46,7 @@ export function openStorage(
   return {
     isAvailable: () => sqlite.query("SELECT 1 AS healthy").get() !== null,
     guildSettings: createGuildSettingsRepository(database, defaults),
+    incidents: createIncidentRepository(database),
     close: () => sqlite.close(true),
   };
 }

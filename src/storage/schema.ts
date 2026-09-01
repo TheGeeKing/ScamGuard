@@ -23,3 +23,21 @@ export const guilds = sqliteTable("guilds", {
     .notNull()
     .default([]),
 });
+
+export const incidents = sqliteTable("incidents", {
+  id: text("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  messageId: text("message_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  imageEvidence: text("image_evidence", { mode: "json" }).notNull(),
+  signals: text("signals", { mode: "json" }).notNull(),
+  score: integer("score").notNull(),
+  intention: text("intention", {
+    enum: ["allow", "suspicious", "delete", "timeout"],
+  }).notNull(),
+  moderationMode: text("moderation_mode", {
+    enum: ["dry-run", "delete", "enforce"],
+  }).notNull(),
+  intendedActions: text("intended_actions", { mode: "json" }).notNull(),
+});
