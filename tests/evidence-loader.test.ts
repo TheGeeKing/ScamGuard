@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadApprovedEvidence } from "../src/fingerprints/evidence-loader";
+import { loadEvidence } from "../src/fingerprints/evidence-loader";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -13,18 +13,15 @@ afterEach(async () => {
   );
 });
 
-describe("approved Evidence loading", () => {
-  test("hashes raw approved images at boot and ignores pending files", async () => {
+describe("curated Evidence loading", () => {
+  test("hashes raw images from the evidence root at boot", async () => {
     const root = await mkdtemp(join(tmpdir(), "scamguard-evidence-"));
     directories.push(root);
-    await mkdir(join(root, "approved"));
-    await mkdir(join(root, "pending"));
-    await writeFile(join(root, "approved", "b.jpg"), "approved-b");
-    await writeFile(join(root, "approved", "a.jpg"), "approved-a");
-    await writeFile(join(root, "approved", ".gitkeep"), "");
-    await writeFile(join(root, "pending", "ignored.jpg"), "pending");
+    await writeFile(join(root, "b.jpg"), "curated-b");
+    await writeFile(join(root, "a.jpg"), "curated-a");
+    await writeFile(join(root, "README.md"), "not an image");
 
-    const evidence = await loadApprovedEvidence(join(root, "approved"));
+    const evidence = await loadEvidence(root);
     expect(evidence.map((entry) => entry.file)).toEqual(["a.jpg", "b.jpg"]);
     expect(evidence.every((entry) => entry.sha256.length === 64)).toBe(true);
   });

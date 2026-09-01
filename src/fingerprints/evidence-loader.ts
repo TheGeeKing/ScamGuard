@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-export type ApprovedEvidence = {
+export type CuratedEvidence = {
   file: string;
   sha256: string;
 };
@@ -12,17 +12,20 @@ async function hashFile(path: string): Promise<string> {
   return hasher.digest("hex");
 }
 
-export async function loadApprovedEvidence(
-  approvedDirectory: string,
-): Promise<ApprovedEvidence[]> {
-  const files = (await readdir(approvedDirectory, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && !entry.name.startsWith("."))
+export async function loadEvidence(
+  evidenceDirectory: string,
+): Promise<CuratedEvidence[]> {
+  const files = (await readdir(evidenceDirectory, { withFileTypes: true }))
+    .filter(
+      (entry) =>
+        entry.isFile() && /\.(?:gif|jpe?g|png|webp)$/i.test(entry.name),
+    )
     .map((entry) => entry.name)
     .sort((left, right) => left.localeCompare(right));
   return Promise.all(
     files.map(async (file) => ({
       file,
-      sha256: await hashFile(join(approvedDirectory, file)),
+      sha256: await hashFile(join(evidenceDirectory, file)),
     })),
   );
 }

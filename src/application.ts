@@ -3,7 +3,7 @@ import { createDiscordBot, type DiscordBot } from "./bot/discord-adapter";
 import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
-import { loadApprovedEvidence } from "./fingerprints/evidence-loader";
+import { loadEvidence } from "./fingerprints/evidence-loader";
 import { startHealthServer } from "./health/http";
 import {
   canFetchImageSource,
@@ -59,7 +59,7 @@ export function createApplication(
     onEligibleMessage: (event) => dispatchMessage(event),
   });
   const behavior = createBehaviorTracker(() => new Date());
-  const approvedEvidenceHashes = new Set<string>();
+  const evidenceHashes = new Set<string>();
   const scamGuard = createScamGuard({
     now: () => new Date(),
     getSettings: storage.guildSettings.get,
@@ -93,7 +93,7 @@ export function createApplication(
         ),
         signals: [
           ...imageDigests
-            .filter((digest) => approvedEvidenceHashes.has(digest))
+            .filter((digest) => evidenceHashes.has(digest))
             .map((digest) => ({
               key: `known-sha:${digest}`,
               group: "known-fingerprint",
@@ -129,11 +129,11 @@ export function createApplication(
   return {
     health,
     start: async () => {
-      const approvedEvidence = await loadApprovedEvidence(
-        fileURLToPath(new URL("../evidence/approved", import.meta.url)),
+      const evidenceFiles = await loadEvidence(
+        fileURLToPath(new URL("../evidence", import.meta.url)),
       );
-      for (const evidence of approvedEvidence) {
-        approvedEvidenceHashes.add(evidence.sha256);
+      for (const evidence of evidenceFiles) {
+        evidenceHashes.add(evidence.sha256);
       }
       await refreshSettings();
       await discord.start();
