@@ -8,6 +8,13 @@
       "when": 1788244794669,
       "tag": "0000_graceful_puppet_master",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788246112647,
+      "tag": "0001_ambiguous_fat_cobra",
+      "breakpoints": true
     }
   ]
 }

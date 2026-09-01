@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Ticket 01 complete; ticket 02 is the blocker frontier.
+Tickets 01–02 complete; ticket 03 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -90,7 +90,8 @@ Ticket 01 complete; ticket 02 is the blocker frontier.
 - Published the initial-release specification as ready for agent implementation.
 - Published ten approved, dependency-ordered implementation tickets.
 - Completed ticket 01: bootable Bun service, validated configuration, Drizzle migrations, SQLite health, and production-like Compose workflow.
+- Completed ticket 02: guild-scoped Discord connection, admin configuration, Drizzle-backed overrides, onboarding, and message filtering.
 
 ## Next
 
-- Implement ticket 02: connect and configure one Discord server.
+- Implement ticket 03: evaluate explainable message assessments.

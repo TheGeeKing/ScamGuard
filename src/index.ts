@@ -2,6 +2,9 @@ import { createApplication } from "./application";
 
 const application = createApplication(process.env);
 const healthServer = application.serveHealth();
+void application.start().catch((error: unknown) => {
+  console.error("ScamGuard could not connect to Discord", error);
+});
 
 console.log(
   `ScamGuard health listening on ${healthServer.hostname}:${healthServer.port}`,

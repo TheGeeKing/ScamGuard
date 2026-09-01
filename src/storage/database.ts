@@ -3,13 +3,34 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import type { EffectiveGuildSettings } from "../bot/admin-commands";
+import {
+  createGuildSettingsRepository,
+  type StoredGuildSettings,
+} from "./guild-settings";
 
 export type Storage = {
   isAvailable(): boolean;
+  guildSettings: StoredGuildSettings;
   close(): void;
 };
 
-export function openStorage(path: string): Storage {
+const fallbackSettings: EffectiveGuildSettings = {
+  moderationMode: "dry-run",
+  suspiciousScore: 50,
+  deleteScore: 70,
+  timeoutScore: 100,
+  timeoutMinutes: 10,
+  incidentRetentionDays: 30,
+  moderationLogChannelId: null,
+  ignoredChannelIds: [],
+  trustedRoleIds: [],
+};
+
+export function openStorage(
+  path: string,
+  defaults: EffectiveGuildSettings = fallbackSettings,
+): Storage {
   mkdirSync(dirname(path), { recursive: true });
   const sqlite = new Database(path, { create: true, strict: true });
   sqlite.run("PRAGMA journal_mode = WAL");
@@ -22,6 +43,7 @@ export function openStorage(path: string): Storage {
 
   return {
     isAvailable: () => sqlite.query("SELECT 1 AS healthy").get() !== null,
+    guildSettings: createGuildSettingsRepository(database, defaults),
     close: () => sqlite.close(true),
   };
 }
