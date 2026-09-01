@@ -21,6 +21,7 @@ describe("Incident storage", () => {
     try {
       await storage.incidents.save({
         guildId: "guild-1",
+        channelId: "channel-1",
         messageId: "message-1",
         userId: "user-1",
         createdAt: new Date(0),

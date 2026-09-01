@@ -55,6 +55,18 @@ type OnboardingPort = {
 export const moderationLogChannelNotice =
   "This channel is now the ScamGuard moderation log.";
 
+export function formatIncidentNotification(
+  incident: Pick<
+    IncidentRecord,
+    "guildId" | "channelId" | "messageId" | "score" | "intention"
+  >,
+): string {
+  const message = incident.channelId
+    ? `https://discord.com/channels/${incident.guildId}/${incident.channelId}/${incident.messageId}`
+    : incident.messageId;
+  return `ScamGuard Incident: ${message} — score ${incident.score}, intention ${incident.intention}.`;
+}
+
 export async function announceModerationLogChannel(port: {
   shouldAnnounce: boolean;
   send(): Promise<boolean>;
@@ -294,9 +306,7 @@ export function createDiscordBot(options: {
         settings.moderationLogChannelId,
       );
       if (channel?.isSendable()) {
-        await channel.send(
-          `ScamGuard Incident: message ${incident.messageId}, score ${incident.score}, intention ${incident.intention}.`,
-        );
+        await channel.send(formatIncidentNotification(incident));
       }
     },
     close: () => client.destroy(),

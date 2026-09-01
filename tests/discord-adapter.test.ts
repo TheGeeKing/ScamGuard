@@ -3,12 +3,27 @@ import { GatewayIntentBits } from "discord.js";
 import {
   announceModerationLogChannel,
   discordGatewayIntents,
+  formatIncidentNotification,
   moderationLogChannelNotice,
   runOnboarding,
   shouldAssessMessage,
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
+  test("links directly to the triggering Discord message in Incident notifications", () => {
+    expect(
+      formatIncidentNotification({
+        guildId: "guild-1",
+        channelId: "channel-1",
+        messageId: "message-1",
+        score: 100,
+        intention: "timeout",
+      }),
+    ).toBe(
+      "ScamGuard Incident: https://discord.com/channels/guild-1/channel-1/message-1 — score 100, intention timeout.",
+    );
+  });
+
   test("requests only the guild message intents ScamGuard needs", () => {
     expect(discordGatewayIntents).toEqual([
       GatewayIntentBits.Guilds,

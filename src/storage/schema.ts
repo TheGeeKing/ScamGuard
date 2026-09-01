@@ -27,6 +27,7 @@ export const guilds = sqliteTable("guilds", {
 export const incidents = sqliteTable("incidents", {
   id: text("id").primaryKey(),
   guildId: text("guild_id").notNull(),
+  channelId: text("channel_id"),
   messageId: text("message_id").notNull(),
   userId: text("user_id").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),

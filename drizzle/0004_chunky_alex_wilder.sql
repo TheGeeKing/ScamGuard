@@ -1,0 +1,1 @@
+ALTER TABLE `incidents` ADD `channel_id` text;

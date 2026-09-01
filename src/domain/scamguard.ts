@@ -19,6 +19,7 @@ export type Intention = "allow" | "suspicious" | "delete" | "timeout";
 
 export type Assessment = {
   guildId: string;
+  channelId: string | null;
   messageId: string;
   userId: string;
   createdAt: Date;
@@ -140,6 +141,7 @@ export function createScamGuard(ports: Ports): {
       const score = signals.reduce((total, signal) => total + signal.weight, 0);
       const assessment: Assessment = {
         guildId: event.guildId,
+        channelId: event.channelId ?? null,
         messageId: event.messageId,
         userId: event.userId,
         createdAt: ports.now(),

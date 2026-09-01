@@ -36,6 +36,7 @@ export function createIncidentRepository(
       return row
         ? {
             guildId: row.guildId,
+            channelId: row.channelId,
             messageId: row.messageId,
             userId: row.userId,
             createdAt: row.createdAt,
