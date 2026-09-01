@@ -5,6 +5,10 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import type { EffectiveGuildSettings } from "../bot/admin-commands";
 import {
+  createFingerprintRepository,
+  type FingerprintRepository,
+} from "./fingerprints";
+import {
   createGuildSettingsRepository,
   type StoredGuildSettings,
 } from "./guild-settings";
@@ -14,6 +18,7 @@ export type Storage = {
   isAvailable(): boolean;
   guildSettings: StoredGuildSettings;
   incidents: IncidentRepository;
+  fingerprints: FingerprintRepository;
   close(): void;
 };
 
@@ -47,6 +52,7 @@ export function openStorage(
     isAvailable: () => sqlite.query("SELECT 1 AS healthy").get() !== null,
     guildSettings: createGuildSettingsRepository(database, defaults),
     incidents: createIncidentRepository(database),
+    fingerprints: createFingerprintRepository(database),
     close: () => sqlite.close(true),
   };
 }

@@ -41,3 +41,16 @@ export const incidents = sqliteTable("incidents", {
   }).notNull(),
   intendedActions: text("intended_actions", { mode: "json" }).notNull(),
 });
+
+export const fingerprints = sqliteTable("fingerprints", {
+  id: text("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  sha256: text("sha256").notNull(),
+  classification: text("classification", {
+    enum: ["known", "safe", "hot"],
+  }).notNull(),
+  source: text("source"),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+});
