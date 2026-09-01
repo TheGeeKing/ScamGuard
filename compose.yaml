@@ -1,0 +1,39 @@
+services:
+  scamguard:
+    build: .
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in .env}
+      GUILD_ID: ${GUILD_ID:?Set GUILD_ID in .env}
+      DATABASE_PATH: /data/scamguard.db
+      SUSPICIOUS_SCORE: ${SUSPICIOUS_SCORE:-50}
+      DELETE_SCORE: ${DELETE_SCORE:-70}
+      TIMEOUT_SCORE: ${TIMEOUT_SCORE:-100}
+      TIMEOUT_MINUTES: ${TIMEOUT_MINUTES:-10}
+      INCIDENT_RETENTION_DAYS: ${INCIDENT_RETENTION_DAYS:-30}
+      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-10485760}
+      IMAGE_DOWNLOAD_TIMEOUT_MS: ${IMAGE_DOWNLOAD_TIMEOUT_MS:-10000}
+      EXTERNAL_IMAGE_FETCH_ENABLED: ${EXTERNAL_IMAGE_FETCH_ENABLED:-true}
+      FAST_ANALYSIS_BUDGET_MS: ${FAST_ANALYSIS_BUDGET_MS:-100}
+      HEALTH_HOST: 0.0.0.0
+      HEALTH_PORT: 3000
+      MODERATION_MODE: ${MODERATION_MODE:-dry-run}
+    ports:
+      - "127.0.0.1:${HEALTH_PORT:-3000}:3000"
+    volumes:
+      - scamguard-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const response=await fetch('http://127.0.0.1:3000/health');process.exit(response.ok?0:1)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  scamguard-data:

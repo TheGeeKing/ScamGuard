@@ -4,11 +4,11 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Missing `DISCORD_TOKEN` or `GUILD_ID` fails startup with a clear, secret-free error.
-- [ ] Environment defaults are validated for thresholds, timeout, retention, image limits, external fetching, health bind, and moderation mode.
-- [ ] Drizzle uses the native `bun:sqlite` driver and committed generated migrations.
-- [ ] `/health` reports process and SQLite state without identifiers, secrets, or configuration values.
-- [ ] Local Bun and Compose workflows start the same application with persistent SQLite data.
-- [ ] `bun test`, TypeScript checking, Biome, and a health smoke check pass.
+- [x] Missing `DISCORD_TOKEN` or `GUILD_ID` fails startup with a clear, secret-free error.
+- [x] Environment defaults are validated for thresholds, timeout, retention, image limits, external fetching, health bind, and moderation mode.
+- [x] Drizzle uses the native `bun:sqlite` driver and committed generated migrations.
+- [x] `/health` reports process and SQLite state without identifiers, secrets, or configuration values.
+- [x] Local Bun and Compose workflows start the same application with persistent SQLite data.
+- [x] `bun test`, TypeScript checking, Biome, and a health smoke check pass.

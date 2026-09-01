@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Implementation tickets (`to-tickets`). No application code has been written yet.
+Ticket 01 complete; ticket 02 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -89,7 +89,8 @@ Implementation tickets (`to-tickets`). No application code has been written yet.
 - Rewrote `plan.md` around the Bun runtime while preserving the broader feature roadmap.
 - Published the initial-release specification as ready for agent implementation.
 - Published ten approved, dependency-ordered implementation tickets.
+- Completed ticket 01: bootable Bun service, validated configuration, Drizzle migrations, SQLite health, and production-like Compose workflow.
 
 ## Next
 
-- Implement ticket 01, then work the blocker frontier with tests and an atomic commit per ticket.
+- Implement ticket 02: connect and configure one Discord server.
