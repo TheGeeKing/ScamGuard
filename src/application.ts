@@ -1,5 +1,6 @@
 import { createDiscordBot, type DiscordBot } from "./bot/discord-adapter";
 import { loadConfig } from "./config";
+import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { startHealthServer } from "./health/http";
 import { openStorage } from "./storage/database";
@@ -55,8 +56,24 @@ export function createApplication(
     saveIncident: storage.incidents.save,
     notify: discord.notify,
   });
+  const behavior = createBehaviorTracker(() => new Date());
   dispatchMessage = async (event) => {
-    await scamGuard.dispatch(event);
+    const signals = event.channelId
+      ? behavior.observe({
+          guildId: event.guildId,
+          userId: event.userId,
+          messageId: event.messageId,
+          channelId: event.channelId,
+          imageCount: event.imageCount ?? 0,
+          imageDigests: event.imageDigests ?? [],
+          accountCreatedAt: event.accountCreatedAt ?? new Date(0),
+          guildJoinedAt: event.guildJoinedAt ?? null,
+        })
+      : [];
+    await scamGuard.dispatch({
+      ...event,
+      signals: [...event.signals, ...signals],
+    });
   };
 
   const health = (): HealthStatus => ({

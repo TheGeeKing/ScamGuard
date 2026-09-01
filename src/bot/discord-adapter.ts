@@ -226,6 +226,16 @@ export function createDiscordBot(options: {
         guildId: message.guildId as string,
         messageId: message.id,
         userId: message.author.id,
+        channelId: message.channelId,
+        imageCount:
+          message.attachments.filter((attachment) =>
+            attachment.contentType?.startsWith("image/"),
+          ).size +
+          message.embeds.filter((embed) => embed.image || embed.thumbnail)
+            .length,
+        imageDigests: [],
+        accountCreatedAt: message.author.createdAt,
+        guildJoinedAt: message.member?.joinedAt ?? null,
         imageEvidence: [],
         signals: [],
       });

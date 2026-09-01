@@ -35,6 +35,11 @@ export type ScamGuardEvent =
       guildId: string;
       messageId: string;
       userId: string;
+      channelId?: string;
+      imageCount?: number;
+      imageDigests?: string[];
+      accountCreatedAt?: Date;
+      guildJoinedAt?: Date | null;
       imageEvidence: ImageEvidence[];
       signals: Signal[];
     }
