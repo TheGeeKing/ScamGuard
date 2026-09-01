@@ -64,6 +64,12 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Send first-run setup instructions once: server system channel first, server-owner DM second, then rely on `/scam status`.
 - Persist no raw images in the local v1 bot.
 - For future opted-in Community reports, use encrypted central review storage; expire unreviewed images after 30 days, delete rejected images, and distribute signed hashes rather than raw images.
+- Treat Discord embed `image` and `thumbnail` fields as Image sources; ignore decorative author/footer icons and non-image embed media.
+- Enable guarded external Image source fetching by default with `EXTERNAL_IMAGE_FETCH_ENABLED` as an operator override.
+- Permit external HTTP on port 80 and HTTPS on port 443 only, with no URL credentials or custom ports.
+- Resolve and pin public destination IPs, reject local/private/reserved destinations, revalidate at most two redirects, and send no ambient credentials.
+- Apply the standard byte, timeout, and file-signature limits to external Image sources.
+- Treat external fetch failures as non-scoring diagnostics and continue behavioral analysis.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -77,6 +83,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Defined enforcement ordering, partial-failure behavior, and quality gates.
 - Defined command registration, configuration fallback, event deduplication, and health behavior.
 - Defined image-source priority, onboarding fallback, and future central review retention.
+- Defined the SSRF-resistant external image-fetch policy.
 
 ## Next
 
