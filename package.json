@@ -11,8 +11,7 @@
     "check": "biome check .",
     "check:write": "biome check --write .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "bun src/storage/migrate.ts",
-    "evidence:generate": "bun scripts/generate-evidence-manifest.ts"
+    "db:migrate": "bun src/storage/migrate.ts"
   },
   "dependencies": {
     "discord.js": "^14.27.0",

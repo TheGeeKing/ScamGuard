@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildEvidenceManifest } from "../scripts/generate-evidence-manifest";
+import { loadApprovedEvidence } from "../src/fingerprints/evidence-loader";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -13,8 +13,8 @@ afterEach(async () => {
   );
 });
 
-describe("reviewed Evidence manifest", () => {
-  test("hashes approved samples deterministically and ignores pending files", async () => {
+describe("approved Evidence loading", () => {
+  test("hashes raw approved images at boot and ignores pending files", async () => {
     const root = await mkdtemp(join(tmpdir(), "scamguard-evidence-"));
     directories.push(root);
     await mkdir(join(root, "approved"));
@@ -24,15 +24,8 @@ describe("reviewed Evidence manifest", () => {
     await writeFile(join(root, "approved", ".gitkeep"), "");
     await writeFile(join(root, "pending", "ignored.jpg"), "pending");
 
-    const manifest = await buildEvidenceManifest(join(root, "approved"));
-    expect(manifest.version).toBe(1);
-    expect(manifest.algorithm).toBe("sha256");
-    expect(manifest.fingerprints.map((entry) => entry.file)).toEqual([
-      "a.jpg",
-      "b.jpg",
-    ]);
-    expect(
-      manifest.fingerprints.every((entry) => entry.sha256.length === 64),
-    ).toBe(true);
+    const evidence = await loadApprovedEvidence(join(root, "approved"));
+    expect(evidence.map((entry) => entry.file)).toEqual(["a.jpg", "b.jpg"]);
+    expect(evidence.every((entry) => entry.sha256.length === 64)).toBe(true);
   });
 });

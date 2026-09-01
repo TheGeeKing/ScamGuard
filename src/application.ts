@@ -1,7 +1,9 @@
+import { fileURLToPath } from "node:url";
 import { createDiscordBot, type DiscordBot } from "./bot/discord-adapter";
 import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
+import { loadApprovedEvidence } from "./fingerprints/evidence-loader";
 import { startHealthServer } from "./health/http";
 import {
   canFetchImageSource,
@@ -57,6 +59,7 @@ export function createApplication(
     onEligibleMessage: (event) => dispatchMessage(event),
   });
   const behavior = createBehaviorTracker(() => new Date());
+  const approvedEvidenceHashes = new Set<string>();
   const scamGuard = createScamGuard({
     now: () => new Date(),
     getSettings: storage.guildSettings.get,
@@ -88,18 +91,27 @@ export function createApplication(
               }
             : { sourceId: outcome.sourceId, diagnostics: [outcome.diagnostic] },
         ),
-        signals: event.channelId
-          ? behavior.observe({
-              guildId: event.guildId,
-              userId: event.userId,
-              messageId: event.messageId,
-              channelId: event.channelId,
-              imageCount: event.imageCount ?? 0,
-              imageDigests,
-              accountCreatedAt: event.accountCreatedAt ?? new Date(0),
-              guildJoinedAt: event.guildJoinedAt ?? null,
-            })
-          : [],
+        signals: [
+          ...imageDigests
+            .filter((digest) => approvedEvidenceHashes.has(digest))
+            .map((digest) => ({
+              key: `known-sha:${digest}`,
+              group: "known-fingerprint",
+              weight: 100,
+            })),
+          ...(event.channelId
+            ? behavior.observe({
+                guildId: event.guildId,
+                userId: event.userId,
+                messageId: event.messageId,
+                channelId: event.channelId,
+                imageCount: event.imageCount ?? 0,
+                imageDigests,
+                accountCreatedAt: event.accountCreatedAt ?? new Date(0),
+                guildJoinedAt: event.guildJoinedAt ?? null,
+              })
+            : []),
+        ],
       };
     },
   });
@@ -117,6 +129,12 @@ export function createApplication(
   return {
     health,
     start: async () => {
+      const approvedEvidence = await loadApprovedEvidence(
+        fileURLToPath(new URL("../evidence/approved", import.meta.url)),
+      );
+      for (const evidence of approvedEvidence) {
+        approvedEvidenceHashes.add(evidence.sha256);
+      }
       await refreshSettings();
       await discord.start();
     },
