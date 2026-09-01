@@ -30,6 +30,7 @@ Tickets 01–07 complete; ticket 08 is the blocker frontier.
 - Create one Assessment per Discord message and include evidence from every eligible attachment.
 - Provide admin commands for status, moderation mode, thresholds, timeout duration, log channel, ignored channels, trusted roles, and false-positive review.
 - Require `Manage Guild` for configuration and review commands; never require Administrator.
+- Post successful guild-setting changes publicly; keep status, validation errors, and permission errors ephemeral.
 - Analyze every eligible attachment without a per-message count limit, using bounded processing to control resource use.
 - Default to 10 MiB per attachment and a 10-second download timeout.
 - Recognize PNG, JPEG, GIF, and WebP by file signature.

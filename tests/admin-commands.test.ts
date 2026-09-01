@@ -36,7 +36,6 @@ describe("ScamGuard admin commands", () => {
         settings,
       ),
     ).toEqual({
-      flags: MessageFlags.Ephemeral,
       content: "Moderation mode set to delete.",
     });
     expect(updates).toEqual([
