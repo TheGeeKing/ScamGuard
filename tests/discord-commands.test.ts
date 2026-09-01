@@ -19,6 +19,7 @@ describe("Discord command registration", () => {
       "thresholds",
       "timeout",
       "retention",
+      "false-positive",
       "log-channel",
       "ignore-channel",
       "trusted-role",

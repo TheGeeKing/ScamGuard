@@ -13,6 +13,7 @@ import {
   selectDiscordImageSources,
 } from "../images/discord-images";
 import type { StoredGuildSettings } from "../storage/guild-settings";
+import type { IncidentRepository } from "../storage/incidents";
 import { type AdminCommand, handleAdminCommand } from "./admin-commands";
 import { applicationCommands } from "./discord-commands";
 
@@ -83,13 +84,34 @@ export const moderationLogChannelNotice =
 export function formatIncidentNotification(
   incident: Pick<
     IncidentRecord,
-    "guildId" | "channelId" | "messageId" | "score" | "intention"
+    | "guildId"
+    | "channelId"
+    | "messageId"
+    | "score"
+    | "intention"
+    | "signals"
+    | "intendedActions"
+    | "actionOutcomes"
+    | "latencyMs"
   >,
 ): string {
   const message = incident.channelId
     ? `https://discord.com/channels/${incident.guildId}/${incident.channelId}/${incident.messageId}`
     : incident.messageId;
-  return `ScamGuard Incident: ${message} — score ${incident.score}, intention ${incident.intention}.`;
+  const signals = incident.signals
+    .map((signal) => `${signal.key} (${signal.weight})`)
+    .join(", ");
+  const outcomes = incident.actionOutcomes
+    .map(
+      (outcome) =>
+        `${outcome.action} ${outcome.status}${outcome.detail ? ` (${outcome.detail})` : ""}`,
+    )
+    .join(", ");
+  const removed = incident.actionOutcomes.filter(
+    (outcome) =>
+      outcome.status === "succeeded" && outcome.action.includes("delete"),
+  ).length;
+  return `ScamGuard Incident: ${message}\nIncident ID: ${incident.messageId}\nScore: ${incident.score} (${incident.intention})\nSignals: ${signals || "none"}\nDesired actions: ${incident.intendedActions.join(", ") || "none"}\nOutcomes: ${outcomes || "none"}\nRemoved messages: ${removed}\nAssessment latency: ${incident.latencyMs}ms`;
 }
 
 export async function announceModerationLogChannel(port: {
@@ -150,6 +172,11 @@ function parseAdminCommand(
         kind: "retention",
         days: interaction.options.getInteger("days", true),
       };
+    case "false-positive":
+      return {
+        kind: "false-positive",
+        incidentId: interaction.options.getString("incident-id", true),
+      };
     case "log-channel":
       return {
         kind: "log-channel",
@@ -193,6 +220,7 @@ export function createDiscordBot(options: {
   token: string;
   guildId: string;
   settings: StoredGuildSettings;
+  incidents: Pick<IncidentRepository, "markFalsePositive">;
   databaseAvailable(): boolean;
   onEligibleMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
@@ -292,10 +320,13 @@ export function createDiscordBot(options: {
           false,
         discordConnected: client.isReady(),
         databaseAvailable: options.databaseAvailable(),
+        reviewerId: interaction.user.id,
       },
       options.settings,
+      options.incidents,
     );
-    if (command.kind !== "status") await options.onSettingsChanged?.();
+    if (command.kind !== "status" && command.kind !== "false-positive")
+      await options.onSettingsChanged?.();
     await interaction.reply(reply);
     if (command.kind === "log-channel") {
       await announceModerationLogChannel({

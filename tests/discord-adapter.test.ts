@@ -18,9 +18,22 @@ describe("Discord adapter", () => {
         messageId: "message-1",
         score: 100,
         intention: "timeout",
+        signals: [
+          { key: "known-fingerprint", group: "fingerprint", weight: 100 },
+        ],
+        intendedActions: ["timeout", "delete"],
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "succeeded" },
+          {
+            action: "delete",
+            targetId: "message-1",
+            status: "succeeded",
+          },
+        ],
+        latencyMs: 143,
       }),
     ).toBe(
-      "ScamGuard Incident: https://discord.com/channels/guild-1/channel-1/message-1 — score 100, intention timeout.",
+      "ScamGuard Incident: https://discord.com/channels/guild-1/channel-1/message-1\nIncident ID: message-1\nScore: 100 (timeout)\nSignals: known-fingerprint (100)\nDesired actions: timeout, delete\nOutcomes: timeout succeeded, delete succeeded\nRemoved messages: 1\nAssessment latency: 143ms",
     );
   });
 

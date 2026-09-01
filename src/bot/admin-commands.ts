@@ -28,6 +28,7 @@ export type AdminCommand =
   | { kind: "thresholds"; suspicious: number; delete: number; timeout: number }
   | { kind: "timeout"; minutes: number }
   | { kind: "retention"; days: number }
+  | { kind: "false-positive"; incidentId: string }
   | { kind: "log-channel"; channelId: string }
   | { kind: "ignore-channel"; action: "add" | "remove"; channelId: string }
   | { kind: "trusted-role"; action: "add" | "remove"; roleId: string };
@@ -37,6 +38,16 @@ export type AdminCommandContext = {
   canManageGuild: boolean;
   discordConnected?: boolean;
   databaseAvailable?: boolean;
+  reviewerId?: string;
+};
+
+type IncidentReviewRepository = {
+  markFalsePositive(
+    guildId: string,
+    messageId: string,
+    reviewerId: string,
+    reviewedAt: Date,
+  ): Promise<boolean>;
 };
 
 export type AdminCommandReply = {
@@ -56,6 +67,7 @@ export async function handleAdminCommand(
   command: AdminCommand,
   context: AdminCommandContext,
   settings: GuildSettingsRepository,
+  incidents?: IncidentReviewRepository,
 ): Promise<AdminCommandReply> {
   if (!context.canManageGuild) {
     return ephemeralReply("Manage Server permission is required.");
@@ -96,6 +108,19 @@ export async function handleAdminCommand(
         incidentRetentionDays: command.days,
       });
       return publicReply(`Incident retention set to ${command.days} days.`);
+    case "false-positive": {
+      if (!incidents || !context.reviewerId)
+        return ephemeralReply("Incident review is unavailable.");
+      const reviewed = await incidents.markFalsePositive(
+        context.guildId,
+        command.incidentId,
+        context.reviewerId,
+        new Date(),
+      );
+      return reviewed
+        ? publicReply(`Incident ${command.incidentId} marked false-positive.`)
+        : ephemeralReply(`Incident ${command.incidentId} was not found.`);
+    }
     case "log-channel":
       await settings.update(context.guildId, {
         moderationLogChannelId: command.channelId,

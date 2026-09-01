@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–08 complete; ticket 09 is the blocker frontier.
+Tickets 01–09 complete; ticket 10 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -98,7 +98,8 @@ Tickets 01–08 complete; ticket 09 is the blocker frontier.
 - Completed ticket 06: guarded external embed fetching with public-IP validation, pinned transport, and redirect revalidation.
 - Completed ticket 07: raw curated Evidence loading, local known/safe/hot fingerprints, moderator message actions, and re-evaluation.
 - Completed ticket 08: ordered idempotent Discord enforcement, local flood blocking, five-minute cleanup, and persisted action outcomes.
+- Completed ticket 09: explainable Incident reports, false-positive review, and scheduled retention cleanup.
 
 ## Next
 
-- Implement ticket 09: review and expire Incidents.
+- Implement ticket 10: harden and document the release.

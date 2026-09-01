@@ -26,7 +26,8 @@ describe("Incident storage", () => {
         userId: "user-1",
         isWebhook: false,
         createdAt: new Date(0),
-        imageEvidence: [{ sourceId: "attachment-1" }],
+        latencyMs: 143,
+        imageEvidence: [{ sourceId: "attachment-1", sha256: "hash-1" }],
         signals: [{ key: "known-sha", group: "fingerprint", weight: 100 }],
         score: 100,
         intention: "timeout",
@@ -35,6 +36,9 @@ describe("Incident storage", () => {
         actionOutcomes: [
           { action: "timeout", targetId: "user-1", status: "intended" },
         ],
+        falsePositive: false,
+        reviewedBy: null,
+        reviewedAt: null,
       });
 
       expect(
@@ -47,7 +51,30 @@ describe("Incident storage", () => {
         actionOutcomes: [
           { action: "timeout", targetId: "user-1", status: "intended" },
         ],
+        latencyMs: 143,
+        falsePositive: false,
       });
+      expect(
+        await storage.incidents.markFalsePositiveByHashes(
+          "guild-1",
+          ["hash-1"],
+          "moderator-1",
+          new Date(1),
+        ),
+      ).toBe(1);
+      expect(
+        await storage.incidents.find("guild-1", "message-1"),
+      ).toMatchObject({
+        falsePositive: true,
+        reviewedBy: "moderator-1",
+        reviewedAt: new Date(1),
+      });
+      expect(
+        await storage.incidents.deleteExpired("guild-1", new Date(2)),
+      ).toBe(1);
+      expect(
+        await storage.incidents.find("guild-1", "message-1"),
+      ).toBeUndefined();
     } finally {
       storage.close();
     }

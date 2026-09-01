@@ -50,9 +50,26 @@ export function createApplication(
     trustedRoleIds: [],
   });
   let moderationLogConfigured = false;
+  let missingLogWarned = false;
+  let retentionTimer: ReturnType<typeof setInterval> | undefined;
   const refreshSettings = async (): Promise<void> => {
     const settings = await storage.guildSettings.get(config.guildId);
     moderationLogConfigured = settings.moderationLogChannelId !== null;
+    if (!moderationLogConfigured && !missingLogWarned) {
+      console.warn(
+        "ScamGuard moderation log is not configured; run /scam log-channel.",
+      );
+      missingLogWarned = true;
+    }
+  };
+  const expireIncidents = async (): Promise<void> => {
+    const settings = await storage.guildSettings.get(config.guildId);
+    await storage.incidents.deleteExpired(
+      config.guildId,
+      new Date(
+        Date.now() - settings.incidentRetentionDays * 24 * 60 * 60 * 1000,
+      ),
+    );
   };
   let dispatchMessage = async (
     _event: Extract<ScamGuardEvent, { kind: "message" }>,
@@ -73,6 +90,7 @@ export function createApplication(
     token: config.discordToken,
     guildId: config.guildId,
     settings: storage.guildSettings,
+    incidents: storage.incidents,
     databaseAvailable: storage.isAvailable,
     onSettingsChanged: refreshSettings,
     onEligibleMessage: (event) => dispatchMessage(event),
@@ -90,6 +108,16 @@ export function createApplication(
         storage.fingerprints,
         new Date(),
       );
+      if (review.action === "safe") {
+        await storage.incidents.markFalsePositiveByHashes(
+          review.guildId,
+          fingerprints.flatMap((outcome) =>
+            outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+          ),
+          review.moderatorId,
+          new Date(),
+        );
+      }
       await scamGuard.dispatch({
         kind: "moderator-review",
         guildId: review.guildId,
@@ -230,6 +258,16 @@ export function createApplication(
         evidenceHashes.add(evidence.sha256);
       }
       await refreshSettings();
+      await expireIncidents();
+      retentionTimer = setInterval(
+        () => {
+          void expireIncidents().catch((error) =>
+            console.error("ScamGuard Incident cleanup failed", error),
+          );
+        },
+        60 * 60 * 1000,
+      );
+      retentionTimer.unref();
       await discord.start();
     },
     serveHealth: () =>
@@ -238,6 +276,7 @@ export function createApplication(
         health,
       ),
     close: () => {
+      if (retentionTimer) clearInterval(retentionTimer);
       discord.close();
       storage.close();
     },

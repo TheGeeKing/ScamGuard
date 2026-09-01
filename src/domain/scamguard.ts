@@ -25,6 +25,7 @@ export type Assessment = {
   userId: string;
   isWebhook: boolean;
   createdAt: Date;
+  latencyMs: number;
   imageEvidence: ImageEvidence[];
   signals: Signal[];
   score: number;
@@ -35,6 +36,9 @@ export type IncidentRecord = Assessment & {
   moderationMode: EffectiveGuildSettings["moderationMode"];
   intendedActions: ("delete" | "timeout")[];
   actionOutcomes: ActionOutcome[];
+  falsePositive: boolean;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
 };
 
 export type ScamGuardEvent =
@@ -151,6 +155,9 @@ export function createScamGuard(ports: Ports): {
       moderationMode: settings.moderationMode,
       intendedActions: intendedActions(assessment.intention),
       actionOutcomes,
+      falsePositive: false,
+      reviewedBy: null,
+      reviewedAt: null,
     };
     await ports.saveIncident(incident);
     const enforcementTransition =
@@ -218,6 +225,7 @@ export function createScamGuard(ports: Ports): {
       if (handledMessages.has(identity)) return { kind: "duplicate" };
       handledMessages.add(identity);
 
+      const startedAt = ports.now();
       const settings = await ports.getSettings(event.guildId);
       const prepared = await ports.prepareMessage?.(event);
       const signals = activeSignals([
@@ -232,6 +240,7 @@ export function createScamGuard(ports: Ports): {
         userId: event.userId,
         isWebhook: event.isWebhook ?? false,
         createdAt: ports.now(),
+        latencyMs: ports.now().getTime() - startedAt.getTime(),
         imageEvidence: [
           ...event.imageEvidence,
           ...(prepared?.imageEvidence ?? []),

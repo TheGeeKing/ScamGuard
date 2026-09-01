@@ -81,6 +81,17 @@ export const scamCommand = new SlashCommandBuilder()
   )
   .addSubcommand((command) =>
     command
+      .setName("false-positive")
+      .setDescription("Mark an Incident false-positive")
+      .addStringOption((option) =>
+        option
+          .setName("incident-id")
+          .setDescription("Incident message ID")
+          .setRequired(true),
+      ),
+  )
+  .addSubcommand((command) =>
+    command
       .setName("log-channel")
       .setDescription("Set moderation log channel")
       .addChannelOption((option) =>

@@ -34,6 +34,7 @@ export const incidents = sqliteTable("incidents", {
     .notNull()
     .default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  latencyMs: integer("latency_ms").notNull().default(0),
   imageEvidence: text("image_evidence", { mode: "json" }).notNull(),
   signals: text("signals", { mode: "json" }).notNull(),
   score: integer("score").notNull(),
@@ -47,6 +48,11 @@ export const incidents = sqliteTable("incidents", {
   actionOutcomes: text("action_outcomes", { mode: "json" })
     .notNull()
     .default([]),
+  falsePositive: integer("false_positive", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
 });
 
 export const fingerprints = sqliteTable("fingerprints", {

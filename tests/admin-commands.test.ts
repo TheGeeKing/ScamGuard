@@ -103,4 +103,45 @@ describe("ScamGuard admin commands", () => {
       },
     ]);
   });
+
+  test("records a false-positive review publicly", async () => {
+    const reviewed: unknown[] = [];
+    const reply = await handleAdminCommand(
+      { kind: "false-positive", incidentId: "message-1" },
+      {
+        guildId: "guild-1",
+        canManageGuild: true,
+        reviewerId: "moderator-1",
+      },
+      { get: async () => settingsValue, update: async () => {} },
+      {
+        markFalsePositive: async (...review) => {
+          reviewed.push(review);
+          return true;
+        },
+      },
+    );
+
+    expect(reply).toEqual({
+      content: "Incident message-1 marked false-positive.",
+    });
+    expect(reviewed[0]).toEqual([
+      "guild-1",
+      "message-1",
+      "moderator-1",
+      expect.any(Date),
+    ]);
+  });
 });
+
+const settingsValue: EffectiveGuildSettings = {
+  moderationMode: "dry-run",
+  suspiciousScore: 50,
+  deleteScore: 70,
+  timeoutScore: 100,
+  timeoutMinutes: 10,
+  incidentRetentionDays: 30,
+  moderationLogChannelId: null,
+  ignoredChannelIds: [],
+  trustedRoleIds: [],
+};
