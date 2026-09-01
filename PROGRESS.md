@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–04 complete; ticket 05 is the blocker frontier.
+Tickets 01–05 complete; ticket 06 is the blocker frontier.
 
 ## Confirmed constraints
 
@@ -93,7 +93,8 @@ Tickets 01–04 complete; ticket 05 is the blocker frontier.
 - Completed ticket 02: guild-scoped Discord connection, admin configuration, Drizzle-backed overrides, onboarding, and message filtering.
 - Completed ticket 03: deterministic dispatch, grouped Signal scoring, expiring Assessments, and durable Incidents.
 - Completed ticket 04: rolling behavior windows, exclusive flood buckets, weak account-age evidence, and Cleanup-window tracking.
+- Completed ticket 05: Discord Image-source selection, bounded streaming SHA-256, signature validation, and failure isolation.
 
 ## Next
 
-- Implement ticket 05: fingerprint Discord-hosted images.
+- Implement ticket 06: fetch external embed images safely.

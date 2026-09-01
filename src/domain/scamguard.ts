@@ -1,4 +1,5 @@
 import type { EffectiveGuildSettings } from "../bot/admin-commands";
+import type { ImageSource } from "../images/discord-images";
 
 export type Signal = {
   key: string;
@@ -8,6 +9,9 @@ export type Signal = {
 
 export type ImageEvidence = {
   sourceId: string;
+  sha256?: string;
+  format?: "png" | "jpeg" | "gif" | "webp";
+  bytes?: number;
   diagnostics?: string[];
 };
 
@@ -37,6 +41,7 @@ export type ScamGuardEvent =
       userId: string;
       channelId?: string;
       imageCount?: number;
+      imageSources?: ImageSource[];
       imageDigests?: string[];
       accountCreatedAt?: Date;
       guildJoinedAt?: Date | null;
@@ -57,6 +62,9 @@ type Ports = {
   getSettings(guildId: string): Promise<EffectiveGuildSettings>;
   saveIncident(incident: IncidentRecord): Promise<unknown>;
   notify(incident: IncidentRecord): Promise<unknown>;
+  prepareMessage?(
+    event: Extract<ScamGuardEvent, { kind: "message" }>,
+  ): Promise<{ imageEvidence: ImageEvidence[]; signals: Signal[] }>;
 };
 
 const fiveMinutes = 5 * 60 * 1000;
@@ -124,14 +132,21 @@ export function createScamGuard(ports: Ports): {
       handledMessages.add(identity);
 
       const settings = await ports.getSettings(event.guildId);
-      const signals = activeSignals(event.signals);
+      const prepared = await ports.prepareMessage?.(event);
+      const signals = activeSignals([
+        ...event.signals,
+        ...(prepared?.signals ?? []),
+      ]);
       const score = signals.reduce((total, signal) => total + signal.weight, 0);
       const assessment: Assessment = {
         guildId: event.guildId,
         messageId: event.messageId,
         userId: event.userId,
         createdAt: ports.now(),
-        imageEvidence: event.imageEvidence,
+        imageEvidence: [
+          ...event.imageEvidence,
+          ...(prepared?.imageEvidence ?? []),
+        ],
         signals,
         score,
         intention: intentionFor(score, settings),

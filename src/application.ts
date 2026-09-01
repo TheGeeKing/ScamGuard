@@ -3,6 +3,7 @@ import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { startHealthServer } from "./health/http";
+import { fingerprintImages } from "./images/discord-images";
 import { openStorage } from "./storage/database";
 
 export type HealthStatus = {
@@ -50,30 +51,50 @@ export function createApplication(
     onSettingsChanged: refreshSettings,
     onEligibleMessage: (event) => dispatchMessage(event),
   });
+  const behavior = createBehaviorTracker(() => new Date());
   const scamGuard = createScamGuard({
     now: () => new Date(),
     getSettings: storage.guildSettings.get,
     saveIncident: storage.incidents.save,
     notify: discord.notify,
+    prepareMessage: async (event) => {
+      const fingerprints = await fingerprintImages(event.imageSources ?? [], {
+        concurrency: 4,
+        maxBytes: config.maxImageBytes,
+        timeoutMs: config.imageDownloadTimeoutMs,
+        fetch: (url, signal) => fetch(url, { signal, redirect: "error" }),
+      });
+      const imageDigests = fingerprints.flatMap((outcome) =>
+        outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+      );
+      return {
+        imageEvidence: fingerprints.map((outcome) =>
+          outcome.status === "fingerprinted"
+            ? {
+                sourceId: outcome.sourceId,
+                sha256: outcome.sha256,
+                format: outcome.format,
+                bytes: outcome.bytes,
+              }
+            : { sourceId: outcome.sourceId, diagnostics: [outcome.diagnostic] },
+        ),
+        signals: event.channelId
+          ? behavior.observe({
+              guildId: event.guildId,
+              userId: event.userId,
+              messageId: event.messageId,
+              channelId: event.channelId,
+              imageCount: event.imageCount ?? 0,
+              imageDigests,
+              accountCreatedAt: event.accountCreatedAt ?? new Date(0),
+              guildJoinedAt: event.guildJoinedAt ?? null,
+            })
+          : [],
+      };
+    },
   });
-  const behavior = createBehaviorTracker(() => new Date());
   dispatchMessage = async (event) => {
-    const signals = event.channelId
-      ? behavior.observe({
-          guildId: event.guildId,
-          userId: event.userId,
-          messageId: event.messageId,
-          channelId: event.channelId,
-          imageCount: event.imageCount ?? 0,
-          imageDigests: event.imageDigests ?? [],
-          accountCreatedAt: event.accountCreatedAt ?? new Date(0),
-          guildJoinedAt: event.guildJoinedAt ?? null,
-        })
-      : [];
-    await scamGuard.dispatch({
-      ...event,
-      signals: [...event.signals, ...signals],
-    });
+    await scamGuard.dispatch(event);
   };
 
   const health = (): HealthStatus => ({

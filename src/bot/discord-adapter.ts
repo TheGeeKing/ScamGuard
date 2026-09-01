@@ -6,6 +6,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
+import { selectDiscordImageSources } from "../images/discord-images";
 import type { StoredGuildSettings } from "../storage/guild-settings";
 import { type AdminCommand, handleAdminCommand } from "./admin-commands";
 import { scamCommand } from "./discord-commands";
@@ -249,18 +250,31 @@ export function createDiscordBot(options: {
         },
       )
     ) {
+      const imageSources = selectDiscordImageSources({
+        attachments: message.attachments.map((attachment) => ({
+          id: attachment.id,
+          url: attachment.url,
+          contentType: attachment.contentType,
+        })),
+        embeds: message.embeds.map((embed) => ({
+          image: embed.image
+            ? { url: embed.image.url, proxyUrl: embed.image.proxyURL }
+            : null,
+          thumbnail: embed.thumbnail
+            ? { url: embed.thumbnail.url, proxyUrl: embed.thumbnail.proxyURL }
+            : null,
+          authorIconUrl: embed.author?.iconURL,
+          footerIconUrl: embed.footer?.iconURL,
+        })),
+      });
       await options.onEligibleMessage?.({
         kind: "message",
         guildId: message.guildId as string,
         messageId: message.id,
         userId: message.author.id,
         channelId: message.channelId,
-        imageCount:
-          message.attachments.filter((attachment) =>
-            attachment.contentType?.startsWith("image/"),
-          ).size +
-          message.embeds.filter((embed) => embed.image || embed.thumbnail)
-            .length,
+        imageCount: imageSources.length,
+        imageSources,
         imageDigests: [],
         accountCreatedAt: message.author.createdAt,
         guildJoinedAt: message.member?.joinedAt ?? null,

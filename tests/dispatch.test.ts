@@ -59,11 +59,16 @@ describe("ScamGuard dispatch", () => {
 
   test("deduplicates message events and expires low-score Assessments after five minutes", async () => {
     let now = new Date("2026-09-01T00:00:00Z");
+    let preparations = 0;
     const app = createScamGuard({
       now: () => now,
       getSettings: async () => ({ ...settings, moderationLogChannelId: null }),
       saveIncident: async () => {},
       notify: async () => {},
+      prepareMessage: async () => {
+        preparations += 1;
+        return { imageEvidence: [], signals: [] };
+      },
     });
     const event = {
       kind: "message" as const,
@@ -76,6 +81,7 @@ describe("ScamGuard dispatch", () => {
 
     expect((await app.dispatch(event)).kind).toBe("assessed");
     expect((await app.dispatch(event)).kind).toBe("duplicate");
+    expect(preparations).toBe(1);
     now = new Date("2026-09-01T00:05:00Z");
     expect(app.activeAssessmentCount()).toBe(0);
   });
