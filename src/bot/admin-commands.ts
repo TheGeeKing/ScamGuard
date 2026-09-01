@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ModerationMode } from "../config";
 
 export type GuildSettingValues = {
@@ -39,9 +40,13 @@ export type AdminCommandContext = {
 };
 
 export type AdminCommandReply = {
-  ephemeral: true;
+  flags: typeof MessageFlags.Ephemeral;
   content: string;
 };
+
+function ephemeralReply(content: string): AdminCommandReply {
+  return { flags: MessageFlags.Ephemeral, content };
+}
 
 export async function handleAdminCommand(
   command: AdminCommand,
@@ -49,63 +54,49 @@ export async function handleAdminCommand(
   settings: GuildSettingsRepository,
 ): Promise<AdminCommandReply> {
   if (!context.canManageGuild) {
-    return {
-      ephemeral: true,
-      content: "Manage Server permission is required.",
-    };
+    return ephemeralReply("Manage Server permission is required.");
   }
 
   switch (command.kind) {
     case "status": {
       const current = await settings.get(context.guildId);
-      return {
-        ephemeral: true,
-        content: `Discord: ${context.discordConnected === false ? "not connected" : "connected"}\nDatabase: ${context.databaseAvailable === false ? "unavailable" : "available"}\nMode: ${current.moderationMode}\nModeration log: ${current.moderationLogChannelId ?? "not configured"}`,
-      };
+      return ephemeralReply(
+        `Discord: ${context.discordConnected === false ? "not connected" : "connected"}\nDatabase: ${context.databaseAvailable === false ? "unavailable" : "available"}\nMode: ${current.moderationMode}\nModeration log: ${current.moderationLogChannelId ?? "not configured"}`,
+      );
     }
     case "mode":
       await settings.update(context.guildId, { moderationMode: command.mode });
-      return {
-        ephemeral: true,
-        content: `Moderation mode set to ${command.mode}.`,
-      };
+      return ephemeralReply(`Moderation mode set to ${command.mode}.`);
     case "thresholds":
       if (
         command.suspicious > command.delete ||
         command.delete > command.timeout
       ) {
-        return {
-          ephemeral: true,
-          content: "Thresholds must satisfy suspicious <= delete <= timeout.",
-        };
+        return ephemeralReply(
+          "Thresholds must satisfy suspicious <= delete <= timeout.",
+        );
       }
       await settings.update(context.guildId, {
         suspiciousScore: command.suspicious,
         deleteScore: command.delete,
         timeoutScore: command.timeout,
       });
-      return { ephemeral: true, content: "Score thresholds updated." };
+      return ephemeralReply("Score thresholds updated.");
     case "timeout":
       await settings.update(context.guildId, {
         timeoutMinutes: command.minutes,
       });
-      return {
-        ephemeral: true,
-        content: `Timeout set to ${command.minutes} minutes.`,
-      };
+      return ephemeralReply(`Timeout set to ${command.minutes} minutes.`);
     case "retention":
       await settings.update(context.guildId, {
         incidentRetentionDays: command.days,
       });
-      return {
-        ephemeral: true,
-        content: `Incident retention set to ${command.days} days.`,
-      };
+      return ephemeralReply(`Incident retention set to ${command.days} days.`);
     case "log-channel":
       await settings.update(context.guildId, {
         moderationLogChannelId: command.channelId,
       });
-      return { ephemeral: true, content: "Moderation log channel updated." };
+      return ephemeralReply("Moderation log channel updated.");
     case "ignore-channel": {
       const current = await settings.get(context.guildId);
       const ignored = new Set(current.ignoredChannelIds);
@@ -114,7 +105,7 @@ export async function handleAdminCommand(
       await settings.update(context.guildId, {
         ignoredChannelIds: [...ignored],
       });
-      return { ephemeral: true, content: "Ignored channels updated." };
+      return ephemeralReply("Ignored channels updated.");
     }
     case "trusted-role": {
       const current = await settings.get(context.guildId);
@@ -122,7 +113,7 @@ export async function handleAdminCommand(
       if (command.action === "add") trusted.add(command.roleId);
       else trusted.delete(command.roleId);
       await settings.update(context.guildId, { trustedRoleIds: [...trusted] });
-      return { ephemeral: true, content: "Trusted roles updated." };
+      return ephemeralReply("Trusted roles updated.");
     }
   }
 }

@@ -3,6 +3,7 @@ import {
   type ChatInputCommandInteraction,
   Client,
   GatewayIntentBits,
+  MessageFlags,
   PermissionFlagsBits,
 } from "discord.js";
 import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
@@ -142,7 +143,7 @@ export function createDiscordBot(options: {
 }): DiscordBot {
   const client = new Client({ intents: discordGatewayIntents });
 
-  client.once("ready", async () => {
+  client.once("clientReady", async () => {
     const guild = await client.guilds.fetch(options.guildId);
     await guild.commands.set([scamCommand.toJSON()]);
     const instructions =
@@ -179,7 +180,7 @@ export function createDiscordBot(options: {
     if (interaction.guildId !== options.guildId) {
       await interaction.reply({
         content: "This command is not available here.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }

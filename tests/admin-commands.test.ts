@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { MessageFlags } from "discord.js";
 import { handleAdminCommand } from "../src/bot/admin-commands";
 
 describe("ScamGuard admin commands", () => {
@@ -20,7 +21,7 @@ describe("ScamGuard admin commands", () => {
         settings,
       ),
     ).toEqual({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: "Manage Server permission is required.",
     });
     expect(updates).toEqual([]);
@@ -31,7 +32,10 @@ describe("ScamGuard admin commands", () => {
         { guildId: "guild-1", canManageGuild: true },
         settings,
       ),
-    ).toEqual({ ephemeral: true, content: "Moderation mode set to delete." });
+    ).toEqual({
+      flags: MessageFlags.Ephemeral,
+      content: "Moderation mode set to delete.",
+    });
     expect(updates).toEqual([
       { guildId: "guild-1", values: { moderationMode: "delete" } },
     ]);
@@ -62,7 +66,7 @@ describe("ScamGuard admin commands", () => {
     expect(
       await handleAdminCommand({ kind: "status" }, context, settings),
     ).toEqual({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content:
         "Discord: connected\nDatabase: available\nMode: dry-run\nModeration log: not configured",
     });
