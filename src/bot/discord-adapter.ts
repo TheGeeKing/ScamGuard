@@ -6,6 +6,7 @@ import {
   MessageFlags,
   PermissionFlagsBits,
 } from "discord.js";
+import type { MessageReference } from "../domain/enforcement";
 import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
 import {
   type ImageSource,
@@ -179,6 +180,12 @@ export type DiscordBot = {
   start(): Promise<void>;
   isConnected(): boolean;
   notify(incident: IncidentRecord): Promise<void>;
+  timeoutMember(
+    guildId: string,
+    userId: string,
+    minutes: number,
+  ): Promise<void>;
+  deleteMessage(message: MessageReference): Promise<void>;
   close(): void;
 };
 
@@ -338,6 +345,7 @@ export function createDiscordBot(options: {
         imageDigests: [],
         accountCreatedAt: message.author.createdAt,
         guildJoinedAt: message.member?.joinedAt ?? null,
+        isWebhook: message.webhookId !== null,
         imageEvidence: [],
         signals: [],
       });
@@ -356,6 +364,18 @@ export function createDiscordBot(options: {
       if (channel?.isSendable()) {
         await channel.send(formatIncidentNotification(incident));
       }
+    },
+    timeoutMember: async (guildId, userId, minutes) => {
+      const guild = await client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(userId);
+      await member.timeout(minutes * 60 * 1000, "ScamGuard enforcement");
+    },
+    deleteMessage: async ({ channelId, messageId }) => {
+      const channel = await client.channels.fetch(channelId);
+      if (!channel?.isTextBased() || !("messages" in channel))
+        throw new Error("message channel is unavailable");
+      const message = await channel.messages.fetch(messageId);
+      await message.delete();
     },
     close: () => client.destroy(),
   };

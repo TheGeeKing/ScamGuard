@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { createDiscordBot, type DiscordBot } from "./bot/discord-adapter";
 import { loadConfig } from "./config";
 import { createBehaviorTracker } from "./domain/behavior";
+import { createModerationEnforcer } from "./domain/enforcement";
 import { createScamGuard, type ScamGuardEvent } from "./domain/scamguard";
 import { loadEvidence } from "./fingerprints/evidence-loader";
 import {
@@ -101,6 +102,10 @@ export function createApplication(
       return result.message;
     },
   });
+  const enforcer = createModerationEnforcer({
+    timeoutMember: discord.timeoutMember,
+    deleteMessage: discord.deleteMessage,
+  });
   const behavior = createBehaviorTracker(() => new Date());
   const evidenceHashes = new Set<string>();
   const scamGuard = createScamGuard({
@@ -129,6 +134,25 @@ export function createApplication(
       }
     },
     notify: discord.notify,
+    enforce: (assessment, settings) =>
+      assessment.channelId
+        ? enforcer.enforce({
+            guildId: assessment.guildId,
+            userId: assessment.userId,
+            trigger: {
+              channelId: assessment.channelId,
+              messageId: assessment.messageId,
+            },
+            cleanup: behavior.cleanupMessages(
+              assessment.guildId,
+              assessment.userId,
+            ),
+            intention: assessment.intention,
+            moderationMode: settings.moderationMode,
+            timeoutMinutes: settings.timeoutMinutes,
+            isWebhook: assessment.isWebhook,
+          })
+        : Promise.resolve([]),
     prepareMessage: async (event) => {
       const fingerprints = await fingerprintSources(event.imageSources ?? []);
       const imageDigests = fingerprints.flatMap((outcome) =>
@@ -173,6 +197,19 @@ export function createApplication(
     },
   });
   dispatchMessage = async (event) => {
+    const settings = await storage.guildSettings.get(event.guildId);
+    if (
+      settings.moderationMode !== "dry-run" &&
+      enforcer.isBlocked(event.guildId, event.userId)
+    ) {
+      if (event.channelId)
+        await enforcer.deleteBlockedMessage(
+          event.guildId,
+          { channelId: event.channelId, messageId: event.messageId },
+          settings.moderationMode,
+        );
+      return;
+    }
     await scamGuard.dispatch(event);
   };
 

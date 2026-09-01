@@ -39,6 +39,7 @@ export function createIncidentRepository(
             channelId: row.channelId,
             messageId: row.messageId,
             userId: row.userId,
+            isWebhook: row.isWebhook,
             createdAt: row.createdAt,
             imageEvidence: row.imageEvidence as IncidentRecord["imageEvidence"],
             signals: row.signals as IncidentRecord["signals"],
@@ -47,6 +48,8 @@ export function createIncidentRepository(
             moderationMode: row.moderationMode,
             intendedActions:
               row.intendedActions as IncidentRecord["intendedActions"],
+            actionOutcomes:
+              row.actionOutcomes as IncidentRecord["actionOutcomes"],
           }
         : undefined;
     },

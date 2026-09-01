@@ -24,6 +24,7 @@ describe("Incident storage", () => {
         channelId: "channel-1",
         messageId: "message-1",
         userId: "user-1",
+        isWebhook: false,
         createdAt: new Date(0),
         imageEvidence: [{ sourceId: "attachment-1" }],
         signals: [{ key: "known-sha", group: "fingerprint", weight: 100 }],
@@ -31,6 +32,9 @@ describe("Incident storage", () => {
         intention: "timeout",
         moderationMode: "dry-run",
         intendedActions: ["timeout", "delete"],
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "intended" },
+        ],
       });
 
       expect(
@@ -40,6 +44,9 @@ describe("Incident storage", () => {
         messageId: "message-1",
         score: 100,
         moderationMode: "dry-run",
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "intended" },
+        ],
       });
     } finally {
       storage.close();

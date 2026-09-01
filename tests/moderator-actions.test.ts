@@ -11,18 +11,25 @@ describe("fingerprint moderator actions", () => {
       shouldPromoteHotFingerprint({
         intention: "timeout",
         moderationMode: "enforce",
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "succeeded" },
+        ],
       }),
     ).toBe(true);
     expect(
       shouldPromoteHotFingerprint({
         intention: "suspicious",
         moderationMode: "enforce",
+        actionOutcomes: [],
       }),
     ).toBe(false);
     expect(
       shouldPromoteHotFingerprint({
         intention: "timeout",
         moderationMode: "dry-run",
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "intended" },
+        ],
       }),
     ).toBe(false);
   });

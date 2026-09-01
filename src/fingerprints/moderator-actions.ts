@@ -33,10 +33,18 @@ export function fingerprintClassificationSignals(
 }
 
 export function shouldPromoteHotFingerprint(
-  incident: Pick<IncidentRecord, "intention" | "moderationMode">,
+  incident: Pick<
+    IncidentRecord,
+    "intention" | "moderationMode" | "actionOutcomes"
+  >,
 ): boolean {
   return (
-    incident.intention === "timeout" && incident.moderationMode === "enforce"
+    incident.intention === "timeout" &&
+    incident.moderationMode === "enforce" &&
+    incident.actionOutcomes.some(
+      (outcome) =>
+        outcome.action === "timeout" && outcome.status === "succeeded",
+    )
   );
 }
 

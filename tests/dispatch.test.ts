@@ -139,6 +139,36 @@ describe("ScamGuard dispatch", () => {
     expect((await assess("timeout", 60)).assessment?.intention).toBe("timeout");
   });
 
+  test("persists and reports enforcement outcomes", async () => {
+    const incidents: IncidentRecord[] = [];
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => ({ ...settings, moderationMode: "enforce" }),
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {},
+      enforce: async () => [
+        { action: "timeout", targetId: "user-1", status: "failed" },
+        { action: "delete", targetId: "message-1", status: "succeeded" },
+      ],
+    });
+
+    const outcome = await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      channelId: "channel-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [],
+      signals: [{ key: "known", group: "fingerprint", weight: 100 }],
+    });
+
+    expect(outcome.kind === "assessed" && outcome.appliedActions).toEqual([
+      "timeout:failed",
+      "delete:succeeded",
+    ]);
+    expect(incidents[0]?.actionOutcomes).toHaveLength(2);
+  });
+
   test("re-evaluates every recent Assessment sharing a reviewed image", async () => {
     const incidents: IncidentRecord[] = [];
     const app = createScamGuard({

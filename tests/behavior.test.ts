@@ -64,10 +64,10 @@ describe("rolling behavior", () => {
       guildJoinedAt: new Date(now.getTime() - 60 * 1000),
     });
     expect(signals.reduce((sum, signal) => sum + signal.weight, 0)).toBe(18);
-    expect(tracker.cleanupMessageIds("guild-1", "user-1")).toEqual([
-      "message-1",
+    expect(tracker.cleanupMessages("guild-1", "user-1")).toEqual([
+      { channelId: "general", messageId: "message-1" },
     ]);
     now = new Date(now.getTime() + 5 * 60 * 1000);
-    expect(tracker.cleanupMessageIds("guild-1", "user-1")).toEqual([]);
+    expect(tracker.cleanupMessages("guild-1", "user-1")).toEqual([]);
   });
 });

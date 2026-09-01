@@ -30,6 +30,9 @@ export const incidents = sqliteTable("incidents", {
   channelId: text("channel_id"),
   messageId: text("message_id").notNull(),
   userId: text("user_id").notNull(),
+  isWebhook: integer("is_webhook", { mode: "boolean" })
+    .notNull()
+    .default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   imageEvidence: text("image_evidence", { mode: "json" }).notNull(),
   signals: text("signals", { mode: "json" }).notNull(),
@@ -41,6 +44,9 @@ export const incidents = sqliteTable("incidents", {
     enum: ["dry-run", "delete", "enforce"],
   }).notNull(),
   intendedActions: text("intended_actions", { mode: "json" }).notNull(),
+  actionOutcomes: text("action_outcomes", { mode: "json" })
+    .notNull()
+    .default([]),
 });
 
 export const fingerprints = sqliteTable("fingerprints", {

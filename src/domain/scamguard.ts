@@ -1,5 +1,6 @@
 import type { EffectiveGuildSettings } from "../bot/admin-commands";
 import type { ImageSource } from "../images/discord-images";
+import type { ActionOutcome } from "./enforcement";
 
 export type Signal = {
   key: string;
@@ -22,6 +23,7 @@ export type Assessment = {
   channelId: string | null;
   messageId: string;
   userId: string;
+  isWebhook: boolean;
   createdAt: Date;
   imageEvidence: ImageEvidence[];
   signals: Signal[];
@@ -32,6 +34,7 @@ export type Assessment = {
 export type IncidentRecord = Assessment & {
   moderationMode: EffectiveGuildSettings["moderationMode"];
   intendedActions: ("delete" | "timeout")[];
+  actionOutcomes: ActionOutcome[];
 };
 
 export type ScamGuardEvent =
@@ -46,6 +49,7 @@ export type ScamGuardEvent =
       imageDigests?: string[];
       accountCreatedAt?: Date;
       guildJoinedAt?: Date | null;
+      isWebhook?: boolean;
       imageEvidence: ImageEvidence[];
       signals: Signal[];
     }
@@ -72,6 +76,10 @@ type Ports = {
   prepareMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
   ): Promise<{ imageEvidence: ImageEvidence[]; signals: Signal[] }>;
+  enforce?(
+    assessment: Assessment,
+    settings: EffectiveGuildSettings,
+  ): Promise<ActionOutcome[]>;
 };
 
 const fiveMinutes = 5 * 60 * 1000;
@@ -134,6 +142,7 @@ export function createScamGuard(ports: Ports): {
     identity: string,
     assessment: Assessment,
     settings: EffectiveGuildSettings,
+    actionOutcomes: ActionOutcome[],
   ): Promise<void> => {
     if (persistedMessages.has(identity)) return;
     persistedMessages.add(identity);
@@ -141,9 +150,15 @@ export function createScamGuard(ports: Ports): {
       ...assessment,
       moderationMode: settings.moderationMode,
       intendedActions: intendedActions(assessment.intention),
+      actionOutcomes,
     };
     await ports.saveIncident(incident);
-    if (settings.moderationLogChannelId) await ports.notify(incident);
+    const enforcementTransition =
+      incident.intention !== "timeout" ||
+      incident.moderationMode !== "enforce" ||
+      actionOutcomes.some((outcome) => outcome.action === "timeout");
+    if (settings.moderationLogChannelId && enforcementTransition)
+      await ports.notify(incident);
   };
 
   return {
@@ -187,7 +202,10 @@ export function createScamGuard(ports: Ports): {
             intention: intentionFor(score, settings),
           };
           recent.set(identity, assessment);
-          if (score >= 50) await persist(identity, assessment, settings);
+          const actionOutcomes =
+            (await ports.enforce?.(assessment, settings)) ?? [];
+          if (score >= 50)
+            await persist(identity, assessment, settings, actionOutcomes);
           if (current.messageId === event.messageId) selected = assessment;
         }
         return selected
@@ -212,6 +230,7 @@ export function createScamGuard(ports: Ports): {
         channelId: event.channelId ?? null,
         messageId: event.messageId,
         userId: event.userId,
+        isWebhook: event.isWebhook ?? false,
         createdAt: ports.now(),
         imageEvidence: [
           ...event.imageEvidence,
@@ -223,9 +242,18 @@ export function createScamGuard(ports: Ports): {
       };
 
       recent.set(identity, assessment);
-      if (score >= 50) await persist(identity, assessment, settings);
+      const actionOutcomes =
+        (await ports.enforce?.(assessment, settings)) ?? [];
+      if (score >= 50)
+        await persist(identity, assessment, settings, actionOutcomes);
 
-      return { kind: "assessed", assessment, appliedActions: [] };
+      return {
+        kind: "assessed",
+        assessment,
+        appliedActions: actionOutcomes.map(
+          (outcome) => `${outcome.action}:${outcome.status}`,
+        ),
+      };
     },
     activeAssessmentCount: () => {
       expire();

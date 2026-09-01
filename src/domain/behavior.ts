@@ -1,3 +1,4 @@
+import type { MessageReference } from "./enforcement";
 import type { Signal } from "./scamguard";
 
 export type BehaviorObservation = {
@@ -18,7 +19,7 @@ const days = (value: number): number => value * 24 * 60 * 60 * 1000;
 
 export function createBehaviorTracker(now: () => Date): {
   observe(observation: BehaviorObservation): Signal[];
-  cleanupMessageIds(guildId: string, userId: string): string[];
+  cleanupMessages(guildId: string, userId: string): MessageReference[];
 } {
   const recent = new Map<string, RecentMessage[]>();
   const identity = (guildId: string, userId: string) => `${guildId}:${userId}`;
@@ -140,7 +141,10 @@ export function createBehaviorTracker(now: () => Date): {
 
       return signals;
     },
-    cleanupMessageIds: (guildId, userId) =>
-      active(guildId, userId).map((message) => message.messageId),
+    cleanupMessages: (guildId, userId) =>
+      active(guildId, userId).map(({ channelId, messageId }) => ({
+        channelId,
+        messageId,
+      })),
   };
 }
