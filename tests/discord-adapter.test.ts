@@ -103,8 +103,6 @@ describe("Discord adapter", () => {
         },
       }),
     ).toBe(true);
-    expect(sent).toEqual([
-      "This channel is now the ScamGuard moderation log.",
-    ]);
+    expect(sent).toEqual(["This channel is now the ScamGuard moderation log."]);
   });
 });

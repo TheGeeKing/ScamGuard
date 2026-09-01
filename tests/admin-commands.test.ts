@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { MessageFlags } from "discord.js";
-import { handleAdminCommand } from "../src/bot/admin-commands";
+import {
+  type EffectiveGuildSettings,
+  handleAdminCommand,
+} from "../src/bot/admin-commands";
 
 describe("ScamGuard admin commands", () => {
   test("requires Manage Guild and persists mode overrides", async () => {
@@ -42,7 +45,7 @@ describe("ScamGuard admin commands", () => {
   });
 
   test("reports status and persists operational overrides", async () => {
-    const current = {
+    const current: EffectiveGuildSettings = {
       moderationMode: "dry-run" as const,
       suspiciousScore: 50,
       deleteScore: 70,
