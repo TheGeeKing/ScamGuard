@@ -60,6 +60,10 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Read operational defaults from environment variables; persist a guild value only when an administrator overrides that default.
 - Remain healthy without a moderation-log channel while surfacing the missing setup in local logs and `/scam status`.
 - Bind the minimal `/health` endpoint to configurable `HEALTH_HOST`/`HEALTH_PORT`, defaulting to `0.0.0.0:3000` in the container.
+- Analyze attachment and rendered-embed Image sources, preferring approved Discord CDN/proxy URLs and using a guarded external-origin fallback when no proxy exists.
+- Send first-run setup instructions once: server system channel first, server-owner DM second, then rely on `/scam status`.
+- Persist no raw images in the local v1 bot.
+- For future opted-in Community reports, use encrypted central review storage; expire unreviewed images after 30 days, delete rejected images, and distribute signed hashes rather than raw images.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -72,6 +76,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Defined initial scoring persistence, moderator corrections, and future community-reporting boundaries.
 - Defined enforcement ordering, partial-failure behavior, and quality gates.
 - Defined command registration, configuration fallback, event deduplication, and health behavior.
+- Defined image-source priority, onboarding fallback, and future central review retention.
 
 ## Next
 

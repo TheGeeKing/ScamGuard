@@ -51,3 +51,7 @@ _Avoid_: Global blacklist, ban list
 **Global fingerprint feed**:
 A future collection of centrally reviewed scam fingerprints that opted-in ScamGuard installations may consume.
 _Avoid_: Automatic learning, raw report stream
+
+**Image source**:
+An image attachment or rendered embed selected for fingerprinting, preferring Discord CDN/proxy bytes and falling back to a guarded external origin only when no safe Discord proxy exists.
+_Avoid_: URL found in message text, arbitrary remote resource
