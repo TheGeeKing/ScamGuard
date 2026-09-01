@@ -54,6 +54,12 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Continue processing remaining attachments when one fails; processing diagnostics are explainable but non-scoring.
 - Let local safe overrides take precedence over the future Global fingerprint feed.
 - Gate implementation commits with `bun test`, TypeScript type-checking, Biome formatting/linting, and the smallest relevant smoke check.
+- Deduplicate message processing by `(guild_id, message_id)` and keep Signals and moderation actions idempotent.
+- Register application commands only in the configured `GUILD_ID` for v1.
+- Require only `DISCORD_TOKEN` and `GUILD_ID` at startup.
+- Read operational defaults from environment variables; persist a guild value only when an administrator overrides that default.
+- Remain healthy without a moderation-log channel while surfacing the missing setup in local logs and `/scam status`.
+- Bind the minimal `/health` endpoint to configurable `HEALTH_HOST`/`HEALTH_PORT`, defaulting to `0.0.0.0:3000` in the container.
 - Track specifications and tickets as local Markdown under `.scratch/`.
 - Make one atomic Conventional Commit for each completed implementation step.
 
@@ -65,6 +71,7 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Defined message cleanup, attachment handling, and the initial admin command surface.
 - Defined initial scoring persistence, moderator corrections, and future community-reporting boundaries.
 - Defined enforcement ordering, partial-failure behavior, and quality gates.
+- Defined command registration, configuration fallback, event deduplication, and health behavior.
 
 ## Next
 
