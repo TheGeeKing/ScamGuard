@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Initial-release specification (`to-spec`). No application code has been written yet.
+Implementation tickets (`to-tickets`). No application code has been written yet.
 
 ## Confirmed constraints
 
@@ -88,9 +88,8 @@ Initial-release specification (`to-spec`). No application code has been written 
 - Defined the SSRF-resistant external image-fetch policy.
 - Rewrote `plan.md` around the Bun runtime while preserving the broader feature roadmap.
 - Published the initial-release specification as ready for agent implementation.
+- Published ten approved, dependency-ordered implementation tickets.
 
 ## Next
 
-- Review and approve the proposed tracer-bullet ticket breakdown.
-- Publish implementation tickets under `.scratch/scamguard/issues/`.
-- Implement tickets blocker-first with tests and an atomic commit per ticket.
+- Implement ticket 01, then work the blocker frontier with tests and an atomic commit per ticket.
