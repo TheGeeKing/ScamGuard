@@ -51,13 +51,13 @@ describe("Discord adapter", () => {
     ).toBe(false);
   });
 
-  test("sends first-run instructions once using system channel then owner DM", async () => {
+  test("sends first-run instructions once using community updates then owner DM", async () => {
     const calls: string[] = [];
     let complete = false;
     const result = await runOnboarding({
       isComplete: async () => complete,
-      sendSystemChannel: async () => {
-        calls.push("system");
+      sendPublicUpdatesChannel: async () => {
+        calls.push("public-updates");
         return false;
       },
       sendOwnerDm: async () => {
@@ -71,11 +71,11 @@ describe("Discord adapter", () => {
     });
 
     expect(result).toBe("owner-dm");
-    expect(calls).toEqual(["system", "owner", "complete"]);
+    expect(calls).toEqual(["public-updates", "owner", "complete"]);
     expect(
       await runOnboarding({
         isComplete: async () => complete,
-        sendSystemChannel: async () => true,
+        sendPublicUpdatesChannel: async () => true,
         sendOwnerDm: async () => true,
         markComplete: async () => {},
       }),

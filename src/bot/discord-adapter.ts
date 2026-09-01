@@ -1,5 +1,4 @@
 import {
-  ChannelType,
   type ChatInputCommandInteraction,
   Client,
   GatewayIntentBits,
@@ -47,7 +46,7 @@ export function shouldAssessMessage(
 
 type OnboardingPort = {
   isComplete(): Promise<boolean>;
-  sendSystemChannel(): Promise<boolean>;
+  sendPublicUpdatesChannel(): Promise<boolean>;
   sendOwnerDm(): Promise<boolean>;
   markComplete(): Promise<void>;
 };
@@ -70,12 +69,12 @@ export async function announceModerationLogChannel(port: {
 export async function runOnboarding(
   port: OnboardingPort,
 ): Promise<
-  "already-complete" | "system-channel" | "owner-dm" | "command-only"
+  "already-complete" | "public-updates" | "owner-dm" | "command-only"
 > {
   if (await port.isComplete()) return "already-complete";
-  let destination: "system-channel" | "owner-dm" | "command-only" =
+  let destination: "public-updates" | "owner-dm" | "command-only" =
     "command-only";
-  if (await port.sendSystemChannel()) destination = "system-channel";
+  if (await port.sendPublicUpdatesChannel()) destination = "public-updates";
   else if (await port.sendOwnerDm()) destination = "owner-dm";
   await port.markComplete();
   return destination;
@@ -165,9 +164,9 @@ export function createDiscordBot(options: {
       "ScamGuard is installed. Run `/scam status`, then configure a moderation log channel and choose a mode.";
     await runOnboarding({
       isComplete: () => options.settings.isOnboardingComplete(guild.id),
-      sendSystemChannel: async () => {
-        const channel = guild.systemChannel;
-        if (!channel || channel.type !== ChannelType.GuildText) return false;
+      sendPublicUpdatesChannel: async () => {
+        const channel = guild.publicUpdatesChannel;
+        if (!channel?.isSendable()) return false;
         try {
           await channel.send(instructions);
           return true;
