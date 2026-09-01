@@ -9,6 +9,7 @@ COPY --from=install /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY src ./src
 COPY drizzle ./drizzle
+COPY evidence ./evidence
 RUN mkdir /data && chown bun:bun /data
 USER bun
 CMD ["bun", "run", "start"]
