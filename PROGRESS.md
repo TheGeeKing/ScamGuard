@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Product clarification (`grill-with-docs`). No application code has been written yet.
+Initial-release specification (`to-spec`). No application code has been written yet.
 
 ## Confirmed constraints
 
@@ -84,9 +84,11 @@ Product clarification (`grill-with-docs`). No application code has been written 
 - Defined command registration, configuration fallback, event deduplication, and health behavior.
 - Defined image-source priority, onboarding fallback, and future central review retention.
 - Defined the SSRF-resistant external image-fetch policy.
+- Rewrote `plan.md` around the Bun runtime while preserving the broader feature roadmap.
+- Published the initial-release specification as ready for agent implementation.
 
 ## Next
 
-- Resolve the initial product and architecture questions.
-- Convert the agreed scope into a Bun-focused specification and implementation tickets.
+- Review and approve the proposed tracer-bullet ticket breakdown.
+- Publish implementation tickets under `.scratch/scamguard/issues/`.
 - Implement tickets blocker-first with tests and an atomic commit per ticket.
