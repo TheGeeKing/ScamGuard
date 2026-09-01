@@ -52,6 +52,21 @@ type OnboardingPort = {
   markComplete(): Promise<void>;
 };
 
+export const moderationLogChannelNotice =
+  "This channel is now the ScamGuard moderation log.";
+
+export async function announceModerationLogChannel(port: {
+  shouldAnnounce: boolean;
+  send(): Promise<boolean>;
+}): Promise<boolean> {
+  if (!port.shouldAnnounce) return false;
+  try {
+    return await port.send();
+  } catch {
+    return false;
+  }
+}
+
 export async function runOnboarding(
   port: OnboardingPort,
 ): Promise<
@@ -199,6 +214,19 @@ export function createDiscordBot(options: {
     );
     if (command.kind !== "status") await options.onSettingsChanged?.();
     await interaction.reply(reply);
+    if (command.kind === "log-channel") {
+      await announceModerationLogChannel({
+        shouldAnnounce:
+          interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ??
+          false,
+        send: async () => {
+          const channel = await client.channels.fetch(command.channelId);
+          if (!channel?.isSendable()) return false;
+          await channel.send(moderationLogChannelNotice);
+          return true;
+        },
+      });
+    }
   });
 
   client.on("messageCreate", async (message) => {

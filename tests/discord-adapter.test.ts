@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { GatewayIntentBits } from "discord.js";
 import {
+  announceModerationLogChannel,
   discordGatewayIntents,
+  moderationLogChannelNotice,
   runOnboarding,
   shouldAssessMessage,
 } from "../src/bot/discord-adapter";
@@ -78,5 +80,31 @@ describe("Discord adapter", () => {
         markComplete: async () => {},
       }),
     ).toBe("already-complete");
+  });
+
+  test("announces the new moderation log channel when the setting is saved", async () => {
+    const sent: string[] = [];
+    expect(
+      await announceModerationLogChannel({
+        shouldAnnounce: false,
+        send: async () => {
+          sent.push("sent");
+          return true;
+        },
+      }),
+    ).toBe(false);
+    expect(sent).toEqual([]);
+    expect(
+      await announceModerationLogChannel({
+        shouldAnnounce: true,
+        send: async () => {
+          sent.push(moderationLogChannelNotice);
+          return true;
+        },
+      }),
+    ).toBe(true);
+    expect(sent).toEqual([
+      "This channel is now the ScamGuard moderation log.",
+    ]);
   });
 });
