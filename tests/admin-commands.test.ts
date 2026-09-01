@@ -70,6 +70,15 @@ describe("ScamGuard admin commands", () => {
       content:
         "Discord: connected\nDatabase: available\nMode: dry-run\nModeration log: not configured",
     });
+    current.moderationLogChannelId = "log-1";
+    expect(
+      await handleAdminCommand({ kind: "status" }, context, settings),
+    ).toEqual({
+      flags: MessageFlags.Ephemeral,
+      content:
+        "Discord: connected\nDatabase: available\nMode: dry-run\nModeration log: <#log-1>",
+    });
+    current.moderationLogChannelId = null;
     await handleAdminCommand(
       { kind: "thresholds", suspicious: 40, delete: 60, timeout: 90 },
       context,

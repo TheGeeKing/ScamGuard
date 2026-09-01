@@ -61,7 +61,7 @@ export async function handleAdminCommand(
     case "status": {
       const current = await settings.get(context.guildId);
       return ephemeralReply(
-        `Discord: ${context.discordConnected === false ? "not connected" : "connected"}\nDatabase: ${context.databaseAvailable === false ? "unavailable" : "available"}\nMode: ${current.moderationMode}\nModeration log: ${current.moderationLogChannelId ?? "not configured"}`,
+        `Discord: ${context.discordConnected === false ? "not connected" : "connected"}\nDatabase: ${context.databaseAvailable === false ? "unavailable" : "available"}\nMode: ${current.moderationMode}\nModeration log: ${current.moderationLogChannelId ? `<#${current.moderationLogChannelId}>` : "not configured"}`,
       );
     }
     case "mode":
