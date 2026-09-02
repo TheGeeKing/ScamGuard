@@ -37,6 +37,7 @@ describe("Discord adapter", () => {
       "https://discord.com/channels/guild-1/channel-1/123456789",
     );
     expect(JSON.stringify(container)).toContain("<@user-1>");
+    expect(JSON.stringify(container)).not.toContain("Open flagged message");
     expect(JSON.stringify(container)).toContain(
       "scamguard:incident:false-positive:123456789",
     );

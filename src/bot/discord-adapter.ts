@@ -130,9 +130,7 @@ export function incidentNotification(
     (outcome) =>
       outcome.status === "succeeded" && outcome.action.includes("delete"),
   ).length;
-  const link = messageUrl
-    ? `[Open flagged message](${messageUrl})`
-    : "Source message unavailable";
+  const link = messageUrl ?? "Source message unavailable";
   return {
     flags: MessageFlags.IsComponentsV2,
     allowedMentions: { users: [incident.userId] },
