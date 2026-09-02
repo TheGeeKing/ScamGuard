@@ -422,14 +422,23 @@ export function createApplication(
               await admission.result,
               perceptualReferences,
             );
+            const latencyMs = Date.now() - startedAt;
             await scamGuard.dispatch({
               kind: "perceptual-observation",
               guildId: event.guildId,
               messageId: event.messageId,
               sourceId: candidate.sourceId,
-              latencyMs: Date.now() - startedAt,
+              latencyMs,
               proposedScore: match.proposedScore,
               matches: match.matches,
+            });
+            writeLog("info", "perceptual.analysis-completed", {
+              guildId: event.guildId,
+              messageId: event.messageId,
+              latencyMs,
+              proposedScore: match.proposedScore,
+              matchCount: match.matches.length,
+              suppressedBySafe: match.suppressedBySafe,
             });
           } catch (error) {
             writeLog("warn", "perceptual.analysis-failed", {

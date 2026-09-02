@@ -23,6 +23,8 @@ closest PDQ distance to the source was above the observation threshold.
   cached Evidence hashes to be superseded naturally at boot.
 - The reported attachment matches `evidence/1.jpg` as one strong observation;
   the other curated images remain outside the segmented threshold.
+- Log completion, latency, proposed score, match count, and safe suppression so
+  an allowed fast assessment is visibly followed by its asynchronous result.
 
 ## Verification
 
