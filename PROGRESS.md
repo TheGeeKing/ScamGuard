@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–10 complete; the initial release implementation is complete.
+Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing before production integration.
 
 ## Confirmed constraints
 
@@ -105,4 +105,5 @@ Tickets 01–10 complete; the initial release implementation is complete.
 
 ## Next
 
+- Complete and review the `imagehash-web` Bun/Windows and Bun/Linux benchmark.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.
