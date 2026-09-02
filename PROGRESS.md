@@ -110,6 +110,8 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
 - Prototyped a bounded 28-hash PDQ crop pyramid that recognizes the agreed
   5%, 10%, and 20% crop fixtures after rejecting unreliable segmentation and
   64-bit dHash variants.
+- Validated transferable image bytes, deterministic worker output, and worker
+  termination/replacement on Windows and Alpine without runtime file writes.
 
 ## Next
 

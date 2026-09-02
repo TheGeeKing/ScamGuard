@@ -15,9 +15,14 @@ export type BenchmarkPixels = {
 export async function decodeBenchmarkImage(
   path: string,
 ): Promise<BenchmarkPixels> {
+  return decodeBenchmarkBytes(await Bun.file(path).arrayBuffer());
+}
+
+export async function decodeBenchmarkBytes(
+  bytes: ArrayBuffer | Uint8Array,
+): Promise<BenchmarkPixels> {
   Bun.Image.backend = "bun";
-  const encoded = await Bun.file(path)
-    .image({ maxPixels: 40_000_000 })
+  const encoded = await new Bun.Image(bytes, { maxPixels: 40_000_000 })
     .resize(512, 512, { fit: "inside", withoutEnlargement: true })
     .png()
     .buffer();
