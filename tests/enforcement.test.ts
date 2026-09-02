@@ -78,6 +78,20 @@ describe("moderation enforcement", () => {
     expect(enforcer.isBlocked("guild-1", "user-1")).toBe(false);
   });
 
+  test("clears local blocked state when a timeout is reversed", async () => {
+    const enforcer = createModerationEnforcer({
+      timeoutMember: async () => {},
+      deleteMessage: async () => {},
+    });
+    await enforcer.enforce({
+      ...request,
+      moderationMode: "enforce",
+    });
+    expect(enforcer.isBlocked("guild-1", "user-1")).toBe(true);
+    enforcer.clearBlocked("guild-1", "user-1");
+    expect(enforcer.isBlocked("guild-1", "user-1")).toBe(false);
+  });
+
   test("keeps dry-run inert and webhooks deletion-only", async () => {
     const calls: string[] = [];
     const enforcer = createModerationEnforcer({

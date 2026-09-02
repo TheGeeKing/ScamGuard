@@ -38,7 +38,7 @@ Use a disposable server and real credentials only for this manual check:
 9. Post the same test image rapidly across at least three channels. Confirm the report names the flood Signals and includes every attachment.
 10. Switch to `delete`; repeat and confirm qualifying messages are deleted without a timeout.
 11. Switch to `enforce`; repeat and confirm one timeout attempt, triggering-message deletion, and five-minute observed-message cleanup.
-12. Use **Mark as safe** on the test image. Confirm linked Incidents become false-positive and a new copy no longer receives the fingerprint Signal. Existing timeouts must not be reversed automatically.
-13. Run `/scam false-positive <incident-id>` on another Incident and confirm the public review acknowledgement.
+12. Use **Mark as safe** on the test image. Confirm linked Incidents become false-positive, the ScamGuard-applied timeout is removed, and a new copy no longer receives the fingerprint Signal.
+13. Run `/scam false-positive <incident-id>` on another Incident and confirm the public review acknowledgement and ScamGuard timeout reversal.
 14. Restart ScamGuard. Confirm settings and Incidents remain, while rolling flood and local-block state start empty.
 15. Stop with SIGTERM or `docker compose stop`; confirm structured shutdown events appear and the process exits within 15 seconds.

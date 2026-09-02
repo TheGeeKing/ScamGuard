@@ -31,6 +31,8 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 
 `/scam` provides `status`, `mode`, `thresholds`, `timeout`, `retention`, `log-channel`, `ignore-channel`, `trusted-role`, and `false-positive`. Successful setting changes are visible in-channel; status and errors are ephemeral. Moderators can also use **Mark as scam** and **Mark as safe** from a message context menu.
 
+Incident notifications use a Components V2 layout with **False positive** and **Mark images safe** actions and tag the flagged user.
+
 ## Modes and restart behavior
 
 - `dry-run` records intended actions without changing Discord or creating local block state.

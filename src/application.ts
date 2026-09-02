@@ -64,6 +64,7 @@ export function createApplication(
   };
   let missingLogWarned = false;
   let retentionTimer: ReturnType<typeof setInterval> | undefined;
+  let clearBlocked = (_guildId: string, _userId: string): void => {};
   const refreshSettings = async (): Promise<void> => {
     const settings = await storage.guildSettings.get(config.guildId);
     moderationLogConfigured = settings.moderationLogChannelId !== null;
@@ -141,11 +142,100 @@ export function createApplication(
         });
         return result.message;
       }),
+    onIncidentReview: (review) =>
+      track(async () => {
+        const incident = await storage.incidents.find(
+          review.guildId,
+          review.messageId,
+        );
+        if (!incident) return `Incident ${review.messageId} was not found.`;
+        let message: string;
+        if (review.action === "false-positive") {
+          await storage.incidents.markFalsePositive(
+            review.guildId,
+            review.messageId,
+            review.moderatorId,
+            new Date(),
+          );
+          message = `Incident ${review.messageId} marked false-positive.`;
+        } else {
+          const sha256 = incident.imageEvidence.flatMap((evidence) =>
+            evidence.sha256 ? [evidence.sha256] : [],
+          );
+          const result = await applyFingerprintReview(
+            {
+              action: "safe",
+              guildId: review.guildId,
+              moderatorId: review.moderatorId,
+              sha256,
+            },
+            storage.fingerprints,
+            new Date(),
+          );
+          await storage.incidents.markFalsePositiveByHashes(
+            review.guildId,
+            sha256,
+            review.moderatorId,
+            new Date(),
+          );
+          await storage.incidents.markFalsePositive(
+            review.guildId,
+            review.messageId,
+            review.moderatorId,
+            new Date(),
+          );
+          await scamGuard.dispatch({
+            kind: "moderator-review",
+            guildId: review.guildId,
+            messageId: review.messageId,
+            action: "safe",
+            sha256,
+          });
+          message = result.message;
+        }
+        const timedOut = incident.actionOutcomes.some(
+          (outcome) =>
+            outcome.action === "timeout" && outcome.status === "succeeded",
+        );
+        const alreadyReversed = incident.actionOutcomes.some(
+          (outcome) =>
+            outcome.action === "timeout-reversal" &&
+            outcome.status === "succeeded",
+        );
+        if (!timedOut || alreadyReversed) return message;
+        try {
+          await discord.removeTimeout(review.guildId, incident.userId);
+          clearBlocked(review.guildId, incident.userId);
+          await storage.incidents.appendActionOutcome(
+            review.guildId,
+            review.messageId,
+            {
+              action: "timeout-reversal",
+              targetId: incident.userId,
+              status: "succeeded",
+            },
+          );
+          return `${message} ScamGuard timeout removed.`;
+        } catch (error) {
+          await storage.incidents.appendActionOutcome(
+            review.guildId,
+            review.messageId,
+            {
+              action: "timeout-reversal",
+              targetId: incident.userId,
+              status: "failed",
+              detail: error instanceof Error ? error.message : "unknown error",
+            },
+          );
+          return `${message} Could not remove the ScamGuard timeout; check the bot permissions and retry.`;
+        }
+      }),
   });
   const enforcer = createModerationEnforcer({
     timeoutMember: discord.timeoutMember,
     deleteMessage: discord.deleteMessage,
   });
+  clearBlocked = enforcer.clearBlocked;
   const behavior = createBehaviorTracker(() => new Date());
   const evidenceHashes = new Set<string>();
   const scamGuard = createScamGuard({

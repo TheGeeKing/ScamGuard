@@ -70,6 +70,16 @@ describe("Incident storage", () => {
         reviewedAt: new Date(1),
       });
       expect(
+        await storage.incidents.appendActionOutcome("guild-1", "message-1", {
+          action: "timeout-reversal",
+          targetId: "user-1",
+          status: "succeeded",
+        }),
+      ).toBe(true);
+      expect(
+        (await storage.incidents.find("guild-1", "message-1"))?.actionOutcomes,
+      ).toHaveLength(2);
+      expect(
         await storage.incidents.deleteExpired("guild-1", new Date(2)),
       ).toBe(1);
       expect(

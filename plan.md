@@ -1412,7 +1412,7 @@ When a moderator marks a message as scam:
 * remove every selected-image hash from the local known-scam set
 * mark linked Incidents false-positive
 * expose which signals caused the incorrect action
-* never automatically reverse an existing Discord timeout
+* reverse an existing timeout only when the reviewed Incident records that ScamGuard successfully applied it
 
 Do not automatically remove broad rules solely because of one false positive.
 

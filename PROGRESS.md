@@ -41,7 +41,7 @@ Tickets 01–10 complete; the initial release implementation is complete.
 - Persist Incidents scoring at least 50, notify moderators, and discard lower-scoring Assessments after five minutes.
 - In dry-run mode, record intended actions without creating local blocked state or applying Discord actions.
 - **Mark as scam** stores every eligible attachment hash and applies mode-appropriate moderation to the selected message and sender.
-- **Mark as safe** removes selected-image hashes and marks linked Incidents false-positive without automatically reversing timeouts.
+- **False positive** and **Mark as safe** reverse a timeout only when that Incident records a successful ScamGuard timeout.
 - Permit in-memory burst, cleanup, and blocked-user state to reset on process restart in v1.
 - Retain Incidents for 30 days by default and expose `/scam retention <days>`.
 - Plan community reporting as a later, explicit opt-in feature rather than part of the first release.
@@ -100,6 +100,7 @@ Tickets 01–10 complete; the initial release implementation is complete.
 - Completed ticket 08: ordered idempotent Discord enforcement, local flood blocking, five-minute cleanup, and persisted action outcomes.
 - Completed ticket 09: explainable Incident reports, false-positive review, and scheduled retention cleanup.
 - Completed ticket 10: structured operations, graceful shutdown, hardened Compose runtime, and operator documentation.
+- Selected an interactive Components V2 Incident alert with moderator correction actions.
 
 ## Next
 

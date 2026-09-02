@@ -3,38 +3,50 @@ import { GatewayIntentBits } from "discord.js";
 import {
   announceModerationLogChannel,
   discordGatewayIntents,
-  formatIncidentNotification,
+  incidentNotification,
   moderationLogChannelNotice,
+  parseIncidentButton,
   runOnboarding,
   shouldAssessMessage,
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
   test("links directly to the triggering Discord message in Incident notifications", () => {
-    expect(
-      formatIncidentNotification({
-        guildId: "guild-1",
-        channelId: "channel-1",
-        messageId: "message-1",
-        score: 100,
-        intention: "timeout",
-        signals: [
-          { key: "known-fingerprint", group: "fingerprint", weight: 100 },
-        ],
-        intendedActions: ["timeout", "delete"],
-        actionOutcomes: [
-          { action: "timeout", targetId: "user-1", status: "succeeded" },
-          {
-            action: "delete",
-            targetId: "message-1",
-            status: "succeeded",
-          },
-        ],
-        latencyMs: 143,
-      }),
-    ).toBe(
-      "ScamGuard Incident: https://discord.com/channels/guild-1/channel-1/message-1\nIncident ID: message-1\nScore: 100 (timeout)\nSignals: known-fingerprint (100)\nDesired actions: timeout, delete\nOutcomes: timeout succeeded, delete succeeded\nRemoved messages: 1\nAssessment latency: 143ms",
+    const incident: Parameters<typeof incidentNotification>[0] = {
+      guildId: "guild-1",
+      channelId: "channel-1",
+      messageId: "123456789",
+      userId: "user-1",
+      score: 100,
+      intention: "timeout",
+      signals: [
+        { key: "known-fingerprint", group: "fingerprint", weight: 100 },
+      ],
+      intendedActions: ["timeout", "delete"],
+      actionOutcomes: [],
+      latencyMs: 143,
+    };
+    const notification = incidentNotification(incident);
+    expect(notification).toMatchObject({
+      flags: 32768,
+      allowedMentions: { users: ["user-1"] },
+    });
+    const container = notification.components[0]?.toJSON();
+    expect(container).toMatchObject({ accent_color: 15548997, type: 17 });
+    expect(JSON.stringify(container)).toContain(
+      "https://discord.com/channels/guild-1/channel-1/123456789",
     );
+    expect(JSON.stringify(container)).toContain("<@user-1>");
+    expect(JSON.stringify(container)).toContain(
+      "scamguard:incident:false-positive:123456789",
+    );
+    expect(JSON.stringify(container)).toContain(
+      "scamguard:incident:safe:123456789",
+    );
+    expect(parseIncidentButton("scamguard:incident:safe:123456789")).toEqual({
+      action: "safe",
+      messageId: "123456789",
+    });
   });
 
   test("requests only the guild message intents ScamGuard needs", () => {

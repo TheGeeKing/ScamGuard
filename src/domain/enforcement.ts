@@ -4,7 +4,7 @@ import type { Intention } from "./scamguard";
 export type MessageReference = { channelId: string; messageId: string };
 
 export type ActionOutcome = {
-  action: "timeout" | "delete" | "cleanup-delete";
+  action: "timeout" | "timeout-reversal" | "delete" | "cleanup-delete";
   targetId: string;
   status: "intended" | "succeeded" | "failed";
   detail?: string;
@@ -156,6 +156,9 @@ export function createModerationEnforcer(ports: Ports) {
       if ((blockedUntil.get(identity) ?? 0) > now()) return true;
       blockedUntil.delete(identity);
       return false;
+    },
+    clearBlocked: (guildId: string, userId: string) => {
+      blockedUntil.delete(userKey(guildId, userId));
     },
     deleteBlockedMessage: (
       guildId: string,

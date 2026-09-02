@@ -1,5 +1,6 @@
 import { and, eq, lt } from "drizzle-orm";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
+import type { ActionOutcome } from "../domain/enforcement";
 import type { IncidentRecord } from "../domain/scamguard";
 import { incidents } from "./schema";
 
@@ -18,6 +19,11 @@ export type IncidentRepository = {
     reviewerId: string,
     reviewedAt: Date,
   ): Promise<number>;
+  appendActionOutcome(
+    guildId: string,
+    messageId: string,
+    outcome: ActionOutcome,
+  ): Promise<boolean>;
   deleteExpired(guildId: string, cutoff: Date): Promise<number>;
 };
 
@@ -119,6 +125,35 @@ export function createIncidentRepository(
         ),
       );
       return matches.length;
+    },
+    appendActionOutcome: async (guildId, messageId, outcome) => {
+      const incident = await database
+        .select({ actionOutcomes: incidents.actionOutcomes })
+        .from(incidents)
+        .where(
+          and(
+            eq(incidents.guildId, guildId),
+            eq(incidents.messageId, messageId),
+          ),
+        )
+        .get();
+      if (!incident) return false;
+      await database
+        .update(incidents)
+        .set({
+          actionOutcomes: [
+            ...(incident.actionOutcomes as ActionOutcome[]),
+            outcome,
+          ],
+        })
+        .where(
+          and(
+            eq(incidents.guildId, guildId),
+            eq(incidents.messageId, messageId),
+          ),
+        )
+        .run();
+      return true;
     },
     deleteExpired: async (guildId, cutoff) => {
       const deleted = await database

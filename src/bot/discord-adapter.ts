@@ -1,10 +1,16 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type ChatInputCommandInteraction,
   Client,
+  ContainerBuilder,
   GatewayIntentBits,
   type Message,
+  type MessageCreateOptions,
   MessageFlags,
   PermissionFlagsBits,
+  TextDisplayBuilder,
 } from "discord.js";
 import type { MessageReference } from "../domain/enforcement";
 import type { IncidentRecord, ScamGuardEvent } from "../domain/scamguard";
@@ -81,37 +87,90 @@ type OnboardingPort = {
 export const moderationLogChannelNotice =
   "This channel is now the ScamGuard moderation log.";
 
-export function formatIncidentNotification(
-  incident: Pick<
-    IncidentRecord,
-    | "guildId"
-    | "channelId"
-    | "messageId"
-    | "score"
-    | "intention"
-    | "signals"
-    | "intendedActions"
-    | "actionOutcomes"
-    | "latencyMs"
-  >,
-): string {
-  const message = incident.channelId
+function incidentButtons(messageId: string): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`scamguard:incident:false-positive:${messageId}`)
+      .setLabel("False positive")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`scamguard:incident:safe:${messageId}`)
+      .setLabel("Mark images safe")
+      .setStyle(ButtonStyle.Success),
+  );
+}
+
+type IncidentNotification = Pick<
+  IncidentRecord,
+  | "guildId"
+  | "channelId"
+  | "messageId"
+  | "score"
+  | "intention"
+  | "signals"
+  | "intendedActions"
+  | "actionOutcomes"
+  | "latencyMs"
+  | "userId"
+>;
+
+export function incidentNotification(
+  incident: IncidentNotification,
+): MessageCreateOptions & { components: ContainerBuilder[] } {
+  const messageUrl = incident.channelId
     ? `https://discord.com/channels/${incident.guildId}/${incident.channelId}/${incident.messageId}`
-    : incident.messageId;
+    : null;
   const signals = incident.signals
     .map((signal) => `${signal.key} (${signal.weight})`)
     .join(", ");
   const outcomes = incident.actionOutcomes
-    .map(
-      (outcome) =>
-        `${outcome.action} ${outcome.status}${outcome.detail ? ` (${outcome.detail})` : ""}`,
-    )
+    .map((outcome) => `${outcome.action} ${outcome.status}`)
     .join(", ");
   const removed = incident.actionOutcomes.filter(
     (outcome) =>
       outcome.status === "succeeded" && outcome.action.includes("delete"),
   ).length;
-  return `ScamGuard Incident: ${message}\nIncident ID: ${incident.messageId}\nScore: ${incident.score} (${incident.intention})\nSignals: ${signals || "none"}\nDesired actions: ${incident.intendedActions.join(", ") || "none"}\nOutcomes: ${outcomes || "none"}\nRemoved messages: ${removed}\nAssessment latency: ${incident.latencyMs}ms`;
+  const link = messageUrl
+    ? `[Open flagged message](${messageUrl})`
+    : "Source message unavailable";
+  return {
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { users: [incident.userId] },
+    components: [
+      new ContainerBuilder()
+        .setAccentColor(incident.intention === "timeout" ? 0xed4245 : 0xfee75c)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            [
+              "# ScamGuard Incident",
+              `Flagged user: <@${incident.userId}> · ${link}`,
+              `### Score: ${incident.score} · ${incident.intention}`,
+              `**Signals**\n${signals || "None"}`,
+              `**Desired actions**\n${incident.intendedActions.join(", ") || "None"}`,
+              `**Outcomes**\n${outcomes || "None"}`,
+              `**Removed:** ${removed} · **Latency:** ${incident.latencyMs}ms`,
+              `-# Incident ID · ${incident.messageId}`,
+            ].join("\n"),
+          ),
+        )
+        .addActionRowComponents(incidentButtons(incident.messageId)),
+    ],
+  };
+}
+
+export function parseIncidentButton(customId: string): {
+  action: "false-positive" | "safe";
+  messageId: string;
+} | null {
+  const match = /^scamguard:incident:(false-positive|safe):(\d+)$/.exec(
+    customId,
+  );
+  return match
+    ? {
+        action: match[1] as "false-positive" | "safe",
+        messageId: match[2] as string,
+      }
+    : null;
 }
 
 export async function announceModerationLogChannel(port: {
@@ -212,6 +271,7 @@ export type DiscordBot = {
     userId: string,
     minutes: number,
   ): Promise<void>;
+  removeTimeout(guildId: string, userId: string): Promise<void>;
   deleteMessage(message: MessageReference): Promise<void>;
   close(): void;
 };
@@ -232,6 +292,12 @@ export function createDiscordBot(options: {
     moderatorId: string;
     messageId: string;
     imageSources: ImageSource[];
+  }): Promise<string>;
+  onIncidentReview?(review: {
+    action: "false-positive" | "safe";
+    guildId: string;
+    messageId: string;
+    moderatorId: string;
   }): Promise<string>;
 }): DiscordBot {
   const client = new Client({ intents: discordGatewayIntents });
@@ -270,6 +336,28 @@ export function createDiscordBot(options: {
   });
 
   client.on("interactionCreate", async (interaction) => {
+    if (interaction.isButton()) {
+      const review = parseIncidentButton(interaction.customId);
+      if (!review) return;
+      if (
+        interaction.guildId !== options.guildId ||
+        !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)
+      ) {
+        await interaction.reply({
+          content: "Manage Server permission is required.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const content = await options.onIncidentReview?.({
+        ...review,
+        guildId: interaction.guildId,
+        moderatorId: interaction.user.id,
+      });
+      await interaction.editReply(content ?? "Incident review is unavailable.");
+      return;
+    }
     if (interaction.isMessageContextMenuCommand()) {
       if (
         interaction.guildId !== options.guildId ||
@@ -311,7 +399,7 @@ export function createDiscordBot(options: {
       return;
     }
     const command = parseAdminCommand(interaction);
-    const reply = await handleAdminCommand(
+    let reply = await handleAdminCommand(
       command,
       {
         guildId: interaction.guildId,
@@ -325,6 +413,20 @@ export function createDiscordBot(options: {
       options.settings,
       options.incidents,
     );
+    if (
+      command.kind === "false-positive" &&
+      reply.flags === undefined &&
+      options.onIncidentReview
+    ) {
+      reply = {
+        content: await options.onIncidentReview({
+          action: "false-positive",
+          guildId: interaction.guildId,
+          messageId: command.incidentId,
+          moderatorId: interaction.user.id,
+        }),
+      };
+    }
     if (command.kind !== "status" && command.kind !== "false-positive")
       await options.onSettingsChanged?.();
     await interaction.reply(reply);
@@ -393,13 +495,18 @@ export function createDiscordBot(options: {
         settings.moderationLogChannelId,
       );
       if (channel?.isSendable()) {
-        await channel.send(formatIncidentNotification(incident));
+        await channel.send(incidentNotification(incident));
       }
     },
     timeoutMember: async (guildId, userId, minutes) => {
       const guild = await client.guilds.fetch(guildId);
       const member = await guild.members.fetch(userId);
       await member.timeout(minutes * 60 * 1000, "ScamGuard enforcement");
+    },
+    removeTimeout: async (guildId, userId) => {
+      const guild = await client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(userId);
+      await member.timeout(null, "ScamGuard false-positive correction");
     },
     deleteMessage: async ({ channelId, messageId }) => {
       const channel = await client.channels.fetch(channelId);
