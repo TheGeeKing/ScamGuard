@@ -236,3 +236,16 @@ This spike resolves the failed decoder dependency without weakening the earlier
 policy: exact SHA remains strongest, perceptual enforcement remains
 observation-only initially, and numeric confidence thresholds remain a later
 benchmark decision.
+
+## Initial gate result
+
+The deterministic Windows and Alpine suites pass for JPEG/WebP recompression,
+resize, brightness, contrast, overlay recovery through the crop pyramid, 20%
+crop plus recompression, worker byte transfer, and worker replacement. Twelve
+generated redistributable negatives do not match the tested Evidence image at
+distance 31 or lower.
+
+Decision: **GO FOR OBSERVATION-ONLY INTEGRATION.** Start with distance 15 as a
+very-strong candidate and 31 as a strong candidate. This is not approval for
+perceptual enforcement. A larger ordinary-image corpus and production
+observations must be reviewed before perceptual Signals can trigger moderation.

@@ -112,9 +112,11 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   64-bit dHash variants.
 - Validated transferable image bytes, deterministic worker output, and worker
   termination/replacement on Windows and Alpine without runtime file writes.
+- Passed the initial edit/crop/generated-negative gate and approved the clean
+  PDQ pipeline for observation-only production integration.
 
 ## Next
 
-- Run the complete transformation, worker, latency, and negative-corpus gate
-  before choosing production distance thresholds.
+- Integrate versioned Evidence fingerprints and the bounded analysis queue with
+  perceptual enforcement disabled.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.
