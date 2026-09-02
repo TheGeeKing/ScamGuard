@@ -102,8 +102,13 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
 - Completed ticket 09: explainable Incident reports, false-positive review, and scheduled retention cleanup.
 - Completed ticket 10: structured operations, graceful shutdown, hardened Compose runtime, and operator documentation.
 - Selected an interactive Components V2 Incident alert with moderator correction actions.
+- Rejected `imagehash-web@3.1.1` because its Canvas dependency cannot install in
+  the Bun Alpine runtime without Python and a native toolchain.
+- Validated a deterministic, cross-platform Bun.Image + `pngjs` + `pdq-wasm`
+  whole-image pipeline and confirmed that crop resistance needs a separate
+  region multihash.
 
 ## Next
 
-- Select and benchmark a Bun-compatible alternative to `imagehash-web`; version 3.1.1 failed both required compatibility gates.
+- Benchmark a Bun-native region multihash for crop-resistant matching.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.
