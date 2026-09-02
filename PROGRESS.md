@@ -118,6 +118,10 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   perceptual worker seam without persisting raw images.
 - Promoted the versioned portable PDQ and crop-pyramid hasher into production
   code and verified the production-only Alpine dependency install.
+- Cached curated perceptual hashes in SQLite by source SHA, algorithm version,
+  and scope, recomputing only changed Evidence.
+- Added the bounded fair analysis queue and persistent replaceable Bun worker
+  without connecting it to fast-path moderation.
 
 ## Next
 
