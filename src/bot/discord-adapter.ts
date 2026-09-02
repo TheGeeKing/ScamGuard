@@ -179,12 +179,25 @@ export function incidentNotification(
     (outcome) =>
       outcome.status === "succeeded" && outcome.action.includes("delete"),
   ).length;
+  const messageStatus = (messageId: string): string => {
+    const outcomes = incident.actionOutcomes.filter(
+      (outcome) =>
+        outcome.targetId === messageId && outcome.action.includes("delete"),
+    );
+    if (outcomes.some((outcome) => outcome.status === "succeeded"))
+      return "Deleted";
+    if (outcomes.some((outcome) => outcome.status === "failed"))
+      return "Delete failed";
+    if (outcomes.some((outcome) => outcome.status === "intended"))
+      return "Would delete";
+    return "Observed";
+  };
   const visibleMessages = messages
     .slice(0, 20)
     .map(({ channelId, messageId }) =>
       channelId
-        ? `- https://discord.com/channels/${incident.guildId}/${channelId}/${messageId}`
-        : `- Message ${messageId} (source unavailable)`,
+        ? `- ${messageStatus(messageId)} · https://discord.com/channels/${incident.guildId}/${channelId}/${messageId}`
+        : `- ${messageStatus(messageId)} · Message ${messageId} (source unavailable)`,
     );
   if (messages.length > visibleMessages.length)
     visibleMessages.push(`- ${messages.length - visibleMessages.length} more`);
@@ -200,7 +213,7 @@ export function incidentNotification(
               "# ScamGuard Incident",
               `Flagged user: <@${incident.userId}>`,
               `### Score: ${incident.score} · ${incident.intention}`,
-              `**Affected messages**\n${visibleMessages.join("\n")}`,
+              `**Messages**\n${visibleMessages.join("\n")}`,
               `**Signals**\n${signals || "None"}`,
               `**Desired actions**\n${incident.intendedActions.join(", ") || "None"}`,
               `**Outcomes**\n${outcomes || "None"}`,

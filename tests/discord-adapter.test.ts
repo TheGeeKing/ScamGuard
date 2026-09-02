@@ -95,6 +95,15 @@ describe("Discord adapter", () => {
       "known",
       "spread",
     ]);
+    const rendered = JSON.stringify(
+      incidentNotification(merged).components[0]?.toJSON(),
+    );
+    expect(rendered).toContain(
+      "Observed · https://discord.com/channels/guild-1/channel-a/message-a",
+    );
+    expect(rendered).toContain(
+      "Deleted · https://discord.com/channels/guild-1/channel-b/message-b",
+    );
   });
 
   test("shows observation-only similarity as a simple signal", () => {
