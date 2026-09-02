@@ -38,7 +38,17 @@ export function createIncidentRepository(
           id: `${incident.guildId}:${incident.messageId}`,
           ...incident,
         })
-        .onConflictDoNothing()
+        .onConflictDoUpdate({
+          target: incidents.id,
+          set: {
+            latencyMs: incident.latencyMs,
+            imageEvidence: incident.imageEvidence,
+            signals: incident.signals,
+            score: incident.score,
+            intention: incident.intention,
+            intendedActions: incident.intendedActions,
+          },
+        })
         .run();
     },
     find: async (guildId, messageId) => {

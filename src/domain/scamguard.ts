@@ -1,5 +1,6 @@
 import type { EffectiveGuildSettings } from "../bot/admin-commands";
 import type { ImageSource } from "../images/discord-images";
+import type { PerceptualMatch } from "../perceptual/matcher";
 import type { ActionOutcome } from "./enforcement";
 
 export type Signal = {
@@ -14,6 +15,10 @@ export type ImageEvidence = {
   format?: "png" | "jpeg" | "gif" | "webp";
   bytes?: number;
   diagnostics?: string[];
+  perceptual?: {
+    proposedScore: number;
+    matches: PerceptualMatch[];
+  };
 };
 
 export type Intention = "allow" | "suspicious" | "delete" | "timeout";
@@ -64,6 +69,15 @@ export type ScamGuardEvent =
       messageId: string;
       action: "scam" | "safe";
       sha256: string[];
+    }
+  | {
+      kind: "perceptual-observation";
+      guildId: string;
+      messageId: string;
+      sourceId: string;
+      latencyMs: number;
+      proposedScore: number;
+      matches: PerceptualMatch[];
     }
   | { kind: "scheduled-cleanup"; guildId: string };
 
@@ -147,8 +161,9 @@ export function createScamGuard(ports: Ports): {
     assessment: Assessment,
     settings: EffectiveGuildSettings,
     actionOutcomes: ActionOutcome[],
+    update = false,
   ): Promise<void> => {
-    if (persistedMessages.has(identity)) return;
+    if (persistedMessages.has(identity) && !update) return;
     persistedMessages.add(identity);
     const incident: IncidentRecord = {
       ...assessment,
@@ -213,6 +228,39 @@ export function createScamGuard(ports: Ports): {
         return selected
           ? { kind: "assessed", assessment: selected, appliedActions: [] }
           : { kind: "accepted" };
+      }
+      if (event.kind === "perceptual-observation") {
+        if (event.proposedScore === 0) return { kind: "accepted" };
+        const identity = `${event.guildId}:${event.messageId}`;
+        const current = recent.get(identity);
+        if (!current) return { kind: "accepted" };
+        const assessment: Assessment = {
+          ...current,
+          latencyMs: Math.max(current.latencyMs, event.latencyMs),
+          imageEvidence: current.imageEvidence.map((evidence) =>
+            evidence.sourceId === event.sourceId
+              ? {
+                  ...evidence,
+                  perceptual: {
+                    proposedScore: event.proposedScore,
+                    matches: event.matches,
+                  },
+                }
+              : evidence,
+          ),
+          signals: activeSignals([
+            ...current.signals,
+            {
+              key: "similar-image",
+              group: "perceptual-observation",
+              weight: 0,
+            },
+          ]),
+        };
+        recent.set(identity, assessment);
+        const settings = await ports.getSettings(event.guildId);
+        await persist(identity, assessment, settings, [], true);
+        return { kind: "assessed", assessment, appliedActions: [] };
       }
       if (event.kind !== "message") return { kind: "accepted" };
 

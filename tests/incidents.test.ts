@@ -54,6 +54,23 @@ describe("Incident storage", () => {
         latencyMs: 143,
         falsePositive: false,
       });
+      const stored = await storage.incidents.find("guild-1", "message-1");
+      if (!stored) throw new Error("expected stored Incident");
+      await storage.incidents.save({
+        ...stored,
+        signals: [
+          { key: "similar-image", group: "perceptual-observation", weight: 0 },
+        ],
+        actionOutcomes: [],
+      });
+      expect(
+        await storage.incidents.find("guild-1", "message-1"),
+      ).toMatchObject({
+        signals: [{ key: "similar-image", weight: 0 }],
+        actionOutcomes: [
+          { action: "timeout", targetId: "user-1", status: "intended" },
+        ],
+      });
       expect(
         await storage.incidents.markFalsePositiveByHashes(
           "guild-1",

@@ -166,7 +166,11 @@ export function incidentNotification(
       ? incident.messages
       : [{ channelId: incident.channelId, messageId: incident.messageId }];
   const signals = incident.signals
-    .map((signal) => `${displaySignalKey(signal.key)} (${signal.weight})`)
+    .map((signal) =>
+      signal.weight === 0
+        ? displaySignalKey(signal.key)
+        : `${displaySignalKey(signal.key)} (${signal.weight})`,
+    )
     .join(", ");
   const outcomes = incident.actionOutcomes
     .map((outcome) => `${outcome.action} ${outcome.status}`)

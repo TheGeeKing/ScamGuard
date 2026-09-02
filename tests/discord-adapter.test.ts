@@ -97,6 +97,26 @@ describe("Discord adapter", () => {
     ]);
   });
 
+  test("shows observation-only similarity as a simple signal", () => {
+    const notification = incidentNotification({
+      guildId: "guild-1",
+      channelId: "channel-1",
+      messageId: "message-1",
+      userId: "user-1",
+      score: 0,
+      intention: "allow",
+      signals: [
+        { key: "similar-image", group: "perceptual-observation", weight: 0 },
+      ],
+      intendedActions: [],
+      actionOutcomes: [],
+      latencyMs: 350,
+    });
+    const rendered = JSON.stringify(notification.components[0]?.toJSON());
+    expect(rendered).toContain("similar-image");
+    expect(rendered).not.toContain("similar-image (0)");
+  });
+
   test("requests only the guild message intents ScamGuard needs", () => {
     expect(discordGatewayIntents).toEqual([
       GatewayIntentBits.Guilds,

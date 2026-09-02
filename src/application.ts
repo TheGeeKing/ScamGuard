@@ -19,6 +19,10 @@ import {
 } from "./images/discord-images";
 import { fetchExternalImage } from "./images/external-fetch";
 import { writeLog } from "./logging";
+import type { PerceptualReference } from "./perceptual/matcher";
+import { matchPerceptual } from "./perceptual/matcher";
+import { createPerceptualQueue } from "./perceptual/queue";
+import { createPerceptualWorker } from "./perceptual/worker-client";
 import { openStorage } from "./storage/database";
 
 export type HealthStatus = {
@@ -52,6 +56,23 @@ export function createApplication(
   });
   let moderationLogConfigured = false;
   let acceptingMessages = true;
+  const perceptualWorker = createPerceptualWorker({
+    timeoutMs: config.perceptualAnalysisTimeoutMs,
+  });
+  const perceptualQueue = createPerceptualQueue(
+    {
+      maxJobs: config.perceptualQueueMaxJobs,
+      maxBytes: config.perceptualQueueMaxBytes,
+      maxJobsPerUser: config.perceptualMaxJobsPerUser,
+      quantum: config.perceptualQueueQuantum,
+    },
+    (job) => perceptualWorker.analyze(job.bytes),
+  );
+  const perceptualReferences: PerceptualReference[] = [];
+  const perceptualCandidates = new Map<
+    string,
+    { sourceId: string; content: ArrayBuffer }[]
+  >();
   const inFlight = new Set<Promise<unknown>>();
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
     const pending = operation();
@@ -310,6 +331,17 @@ export function createApplication(
           storage.fingerprints.classify(event.guildId, digest, new Date()),
         ),
       );
+      perceptualCandidates.set(
+        `${event.guildId}:${event.messageId}`,
+        fingerprints.flatMap((outcome, index) =>
+          outcome.status === "fingerprinted" &&
+          classifications[index] !== "known" &&
+          classifications[index] !== "safe" &&
+          !evidenceHashes.has(outcome.sha256)
+            ? [{ sourceId: outcome.sourceId, content: outcome.content }]
+            : [],
+        ),
+      );
       return {
         imageEvidence: fingerprints.map((outcome) =>
           outcome.status === "fingerprinted"
@@ -365,6 +397,49 @@ export function createApplication(
         score: outcome.assessment.score,
         intention: outcome.assessment.intention,
       });
+      const identity = `${event.guildId}:${event.messageId}`;
+      const candidates = perceptualCandidates.get(identity) ?? [];
+      perceptualCandidates.delete(identity);
+      for (const candidate of candidates) {
+        const admission = perceptualQueue.enqueue({
+          id: `${identity}:${candidate.sourceId}`,
+          guildId: event.guildId,
+          userId: event.userId,
+          bytes: candidate.content,
+        });
+        if (admission.status === "rejected") {
+          writeLog("warn", "perceptual.queue-rejected", {
+            guildId: event.guildId,
+            messageId: event.messageId,
+            reason: admission.reason,
+          });
+          continue;
+        }
+        void track(async () => {
+          try {
+            const startedAt = Date.now();
+            const match = await matchPerceptual(
+              await admission.result,
+              perceptualReferences,
+            );
+            await scamGuard.dispatch({
+              kind: "perceptual-observation",
+              guildId: event.guildId,
+              messageId: event.messageId,
+              sourceId: candidate.sourceId,
+              latencyMs: Date.now() - startedAt,
+              proposedScore: match.proposedScore,
+              matches: match.matches,
+            });
+          } catch (error) {
+            writeLog("warn", "perceptual.analysis-failed", {
+              guildId: event.guildId,
+              messageId: event.messageId,
+              detail: error instanceof Error ? error.message : "unknown error",
+            });
+          }
+        });
+      }
     }
   };
 
@@ -384,6 +459,13 @@ export function createApplication(
       );
       for (const evidence of evidenceFiles) {
         evidenceHashes.add(evidence.sha256);
+        if (evidence.perceptual) {
+          perceptualReferences.push({
+            sourceSha256: evidence.sha256,
+            classification: "known",
+            hash: evidence.perceptual,
+          });
+        }
       }
       await refreshSettings();
       await expireIncidents();
@@ -418,6 +500,8 @@ export function createApplication(
         }),
       ]);
       if (deadline) clearTimeout(deadline);
+      await perceptualQueue.close();
+      perceptualWorker.close();
       storage.close();
       writeLog("info", "shutdown.completed");
     },

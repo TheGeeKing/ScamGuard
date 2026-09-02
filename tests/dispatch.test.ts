@@ -238,4 +238,52 @@ describe("ScamGuard dispatch", () => {
     expect(outcome.assessment?.score).toBe(0);
     expect(outcome.assessment?.intention).toBe("allow");
   });
+
+  test("persists a late perceptual observation without changing moderation", async () => {
+    const incidents: IncidentRecord[] = [];
+    let enforcementCalls = 0;
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => settings,
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {},
+      enforce: async () => {
+        enforcementCalls += 1;
+        return [];
+      },
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [{ sourceId: "image-1", sha256: "a" }],
+      signals: [],
+    });
+
+    const outcome = await app.dispatch({
+      kind: "perceptual-observation",
+      guildId: "guild-1",
+      messageId: "message-1",
+      sourceId: "image-1",
+      latencyMs: 350,
+      proposedScore: 85,
+      matches: [
+        { sourceSha256: "known", distance: 12, strength: "very-strong" },
+      ],
+    });
+
+    expect(outcome.assessment?.signals).toContainEqual({
+      key: "similar-image",
+      group: "perceptual-observation",
+      weight: 0,
+    });
+    expect(outcome.assessment?.score).toBe(0);
+    expect(outcome.assessment?.intention).toBe("allow");
+    expect(
+      outcome.assessment?.imageEvidence[0]?.perceptual?.proposedScore,
+    ).toBe(85);
+    expect(enforcementCalls).toBe(1);
+    expect(incidents).toHaveLength(1);
+  });
 });

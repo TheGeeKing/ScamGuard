@@ -126,9 +126,11 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   environment variables and the production-like Compose workflow.
 - Added quality-filtered perceptual matching with safe-reference precedence,
   distinct-source identity, and the approved non-linear proposed confidence.
+- Connected queued perceptual results as late, zero-weight `similar-image`
+  observations that update Incidents and alerts without changing moderation.
 
 ## Next
 
-- Integrate versioned Evidence fingerprints and the bounded analysis queue with
-  perceptual enforcement disabled.
+- Add moderator-derived known/safe perceptual references and owner-only queue
+  inspection commands.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.
