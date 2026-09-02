@@ -114,6 +114,8 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   termination/replacement on Windows and Alpine without runtime file writes.
 - Passed the initial edit/crop/generated-negative gate and approved the clean
   PDQ pipeline for observation-only production integration.
+- Forwarded bounded, validated image bytes in memory to the forthcoming
+  perceptual worker seam without persisting raw images.
 
 ## Next
 

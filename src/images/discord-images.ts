@@ -87,6 +87,7 @@ export type FingerprintOutcome =
       sha256: string;
       format: ImageFormat;
       bytes: number;
+      content: ArrayBuffer;
     }
   | { status: "failed"; sourceId: string; diagnostic: string };
 
@@ -155,6 +156,7 @@ async function fingerprintOne(
         const reader = response.body.getReader();
         const hasher = new Bun.CryptoHasher("sha256");
         const prefix: number[] = [];
+        const chunks: Uint8Array[] = [];
         let bytes = 0;
         while (true) {
           const chunk = await reader.read();
@@ -165,6 +167,7 @@ async function fingerprintOne(
             throw new Error("image-too-large");
           }
           hasher.update(chunk.value);
+          chunks.push(chunk.value.slice());
           for (const byte of chunk.value) {
             if (prefix.length === 12) break;
             prefix.push(byte);
@@ -172,12 +175,19 @@ async function fingerprintOne(
         }
         const format = identifyFormat(Uint8Array.from(prefix));
         if (!format) throw new Error("unsupported-image-signature");
+        const content = new Uint8Array(bytes);
+        let offset = 0;
+        for (const chunk of chunks) {
+          content.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
         return {
           status: "fingerprinted",
           sourceId: source.id,
           sha256: hasher.digest("hex"),
           format,
           bytes,
+          content: content.buffer,
         };
       })(),
       timeout,

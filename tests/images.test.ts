@@ -97,6 +97,11 @@ describe("Discord image fingerprinting", () => {
       status: "failed",
       diagnostic: "unsupported-image-signature",
     });
+    expect(
+      outcomes[0]?.status === "fingerprinted"
+        ? new Uint8Array(outcomes[0].content)
+        : undefined,
+    ).toEqual(png);
   });
 
   test("hashes a complete GIF and names size and timeout diagnostics", async () => {
