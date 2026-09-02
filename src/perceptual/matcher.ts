@@ -15,17 +15,20 @@ export type PerceptualMatch = {
 async function closestDistance(
   query: PerceptualHash,
   reference: PerceptualHash,
-): Promise<number> {
-  let closest = await perceptualDistance(query.pdq, reference.pdq);
+): Promise<{ distance: number; actionableDistance: number }> {
+  let distance = await perceptualDistance(query.pdq, reference.pdq);
+  let actionableDistance = distance;
   for (const queryCrop of query.crops) {
     for (const referenceCrop of reference.crops) {
-      closest = Math.min(
-        closest,
-        await perceptualDistance(queryCrop, referenceCrop),
-      );
+      const cropDistance = await perceptualDistance(queryCrop, referenceCrop);
+      const observationOnly =
+        queryCrop.startsWith("d:") && referenceCrop.startsWith("d:");
+      distance = Math.min(distance, cropDistance);
+      if (!observationOnly)
+        actionableDistance = Math.min(actionableDistance, cropDistance);
     }
   }
-  return closest;
+  return { distance, actionableDistance };
 }
 
 function proposedScore(matches: PerceptualMatch[]): number {
@@ -55,7 +58,7 @@ export async function matchPerceptual(
       .filter((reference) => reference.hash.quality > 49)
       .map(async (reference) => ({
         reference,
-        distance: await closestDistance(query, reference.hash),
+        ...(await closestDistance(query, reference.hash)),
       })),
   );
   const nearestKnown = Math.min(
@@ -71,21 +74,28 @@ export async function matchPerceptual(
   if (nearestKnown <= 45 && nearestSafe <= nearestKnown) {
     return { proposedScore: 0, matches: [], suppressedBySafe: true };
   }
-  const bySource = new Map<string, number>();
-  for (const { reference, distance } of distances) {
+  const bySource = new Map<
+    string,
+    { distance: number; actionableDistance: number }
+  >();
+  for (const { reference, distance, actionableDistance } of distances) {
     if (reference.classification !== "known" || distance > 45) continue;
-    bySource.set(
-      reference.sourceSha256,
-      Math.min(bySource.get(reference.sourceSha256) ?? 256, distance),
-    );
+    const current = bySource.get(reference.sourceSha256);
+    bySource.set(reference.sourceSha256, {
+      distance: Math.min(current?.distance ?? 256, distance),
+      actionableDistance: Math.min(
+        current?.actionableDistance ?? 256,
+        actionableDistance,
+      ),
+    });
   }
-  const matches = [...bySource].map(([sourceSha256, distance]) => ({
+  const matches = [...bySource].map(([sourceSha256, match]) => ({
     sourceSha256,
-    distance,
+    distance: match.distance,
     strength:
-      distance <= 15
+      match.actionableDistance <= 15
         ? ("very-strong" as const)
-        : distance <= 31
+        : match.actionableDistance <= 31
           ? ("strong" as const)
           : ("weak" as const),
   }));

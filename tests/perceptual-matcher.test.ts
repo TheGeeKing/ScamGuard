@@ -53,3 +53,26 @@ test("an equally close safe reference suppresses known matches", async () => {
     suppressedBySafe: true,
   });
 });
+
+test("segmented matches remain observation-only", async () => {
+  const query = { ...hash(zero), crops: [`d:${"0".repeat(16)}`] };
+  const segmentedReference = (sourceSha256: string, difference: string) => ({
+    sourceSha256,
+    classification: "known" as const,
+    hash: { ...hash("f".repeat(64)), crops: [`d:${difference}`] },
+  });
+
+  const result = await matchPerceptual(query, [
+    segmentedReference("a", "fff0000000000000"),
+    segmentedReference("b", "fffe000000000000"),
+  ]);
+
+  expect(result.matches).toHaveLength(2);
+  expect(
+    result.matches.map(({ distance, strength }) => ({ distance, strength })),
+  ).toEqual([
+    { distance: 24, strength: "weak" },
+    { distance: 30, strength: "weak" },
+  ]);
+  expect(result.proposedScore).toBe(30);
+});
