@@ -234,6 +234,21 @@ export function createScamGuard(ports: Ports): {
         const identity = `${event.guildId}:${event.messageId}`;
         const current = recent.get(identity);
         if (!current) return { kind: "accepted" };
+        const settings = await ports.getSettings(event.guildId);
+        const enforcePerceptual = event.proposedScore >= 85;
+        const signals = activeSignals([
+          ...current.signals,
+          {
+            key: "similar-image",
+            group: "perceptual-observation",
+            weight: enforcePerceptual ? event.proposedScore : 0,
+          },
+        ]);
+        const score = signals.reduce(
+          (total, signal) => total + signal.weight,
+          0,
+        );
+        const calculatedIntention = intentionFor(score, settings);
         const assessment: Assessment = {
           ...current,
           latencyMs: Math.max(current.latencyMs, event.latencyMs),
@@ -248,19 +263,25 @@ export function createScamGuard(ports: Ports): {
                 }
               : evidence,
           ),
-          signals: activeSignals([
-            ...current.signals,
-            {
-              key: "similar-image",
-              group: "perceptual-observation",
-              weight: 0,
-            },
-          ]),
+          signals,
+          score,
+          intention:
+            calculatedIntention === "timeout" && current.intention !== "timeout"
+              ? "delete"
+              : calculatedIntention,
         };
         recent.set(identity, assessment);
-        const settings = await ports.getSettings(event.guildId);
-        await persist(identity, assessment, settings, [], true);
-        return { kind: "assessed", assessment, appliedActions: [] };
+        const actionOutcomes = enforcePerceptual
+          ? ((await ports.enforce?.(assessment, settings)) ?? [])
+          : [];
+        await persist(identity, assessment, settings, actionOutcomes, true);
+        return {
+          kind: "assessed",
+          assessment,
+          appliedActions: actionOutcomes.map(
+            (outcome) => `${outcome.action}:${outcome.status}`,
+          ),
+        };
       }
       if (event.kind !== "message") return { kind: "accepted" };
 

@@ -59,16 +59,19 @@ describe("Incident storage", () => {
       await storage.incidents.save({
         ...stored,
         signals: [
-          { key: "similar-image", group: "perceptual-observation", weight: 0 },
+          { key: "similar-image", group: "perceptual-observation", weight: 85 },
         ],
-        actionOutcomes: [],
+        actionOutcomes: [
+          { action: "delete", targetId: "message-1", status: "succeeded" },
+        ],
       });
       expect(
         await storage.incidents.find("guild-1", "message-1"),
       ).toMatchObject({
-        signals: [{ key: "similar-image", weight: 0 }],
+        signals: [{ key: "similar-image", weight: 85 }],
         actionOutcomes: [
           { action: "timeout", targetId: "user-1", status: "intended" },
+          { action: "delete", targetId: "message-1", status: "succeeded" },
         ],
       });
       expect(
@@ -95,7 +98,7 @@ describe("Incident storage", () => {
       ).toBe(true);
       expect(
         (await storage.incidents.find("guild-1", "message-1"))?.actionOutcomes,
-      ).toHaveLength(2);
+      ).toHaveLength(3);
       expect(
         await storage.incidents.deleteExpired("guild-1", new Date(2)),
       ).toBe(1);

@@ -32,11 +32,22 @@ export function createIncidentRepository(
 ): IncidentRepository {
   return {
     save: async (incident) => {
+      const id = `${incident.guildId}:${incident.messageId}`;
+      const existing = await database
+        .select({ actionOutcomes: incidents.actionOutcomes })
+        .from(incidents)
+        .where(eq(incidents.id, id))
+        .get();
+      const actionOutcomes = [
+        ...((existing?.actionOutcomes as ActionOutcome[] | undefined) ?? []),
+        ...incident.actionOutcomes,
+      ];
       await database
         .insert(incidents)
         .values({
-          id: `${incident.guildId}:${incident.messageId}`,
+          id,
           ...incident,
+          actionOutcomes,
         })
         .onConflictDoUpdate({
           target: incidents.id,
@@ -47,6 +58,7 @@ export function createIncidentRepository(
             score: incident.score,
             intention: incident.intention,
             intendedActions: incident.intendedActions,
+            actionOutcomes,
           },
         })
         .run();

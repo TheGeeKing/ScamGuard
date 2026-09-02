@@ -239,17 +239,23 @@ describe("ScamGuard dispatch", () => {
     expect(outcome.assessment?.intention).toBe("allow");
   });
 
-  test("persists a late perceptual observation without changing moderation", async () => {
+  test("deletes a late high-confidence perceptual match without timing out", async () => {
     const incidents: IncidentRecord[] = [];
-    let enforcementCalls = 0;
+    const intentions: string[] = [];
     const app = createScamGuard({
       now: () => new Date(0),
-      getSettings: async () => settings,
+      getSettings: async () => ({ ...settings, moderationMode: "enforce" }),
       saveIncident: async (incident) => incidents.push(incident),
       notify: async () => {},
-      enforce: async () => {
-        enforcementCalls += 1;
-        return [];
+      enforce: async (assessment) => {
+        intentions.push(assessment.intention);
+        return [
+          {
+            action: "delete",
+            targetId: assessment.messageId,
+            status: "succeeded",
+          },
+        ];
       },
     });
     await app.dispatch({
@@ -276,14 +282,54 @@ describe("ScamGuard dispatch", () => {
     expect(outcome.assessment?.signals).toContainEqual({
       key: "similar-image",
       group: "perceptual-observation",
-      weight: 0,
+      weight: 85,
     });
-    expect(outcome.assessment?.score).toBe(0);
-    expect(outcome.assessment?.intention).toBe("allow");
+    expect(outcome.assessment?.score).toBe(85);
+    expect(outcome.assessment?.intention).toBe("delete");
     expect(
       outcome.assessment?.imageEvidence[0]?.perceptual?.proposedScore,
     ).toBe(85);
-    expect(enforcementCalls).toBe(1);
+    expect(intentions).toEqual(["allow", "delete"]);
+    if (outcome.kind !== "assessed") throw new Error("expected Assessment");
+    expect(outcome.appliedActions).toEqual(["delete:succeeded"]);
+    expect(incidents[0]?.intendedActions).toEqual(["delete"]);
+    expect(incidents[0]?.actionOutcomes).toHaveLength(1);
     expect(incidents).toHaveLength(1);
+  });
+
+  test("keeps a late score-60 perceptual match alert-only", async () => {
+    let enforcementCalls = 0;
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => ({ ...settings, moderationMode: "enforce" }),
+      saveIncident: async () => {},
+      notify: async () => {},
+      enforce: async () => {
+        enforcementCalls += 1;
+        return [];
+      },
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [{ sourceId: "image-1", sha256: "a" }],
+      signals: [],
+    });
+
+    const outcome = await app.dispatch({
+      kind: "perceptual-observation",
+      guildId: "guild-1",
+      messageId: "message-1",
+      sourceId: "image-1",
+      latencyMs: 350,
+      proposedScore: 60,
+      matches: [{ sourceSha256: "known", distance: 26, strength: "strong" }],
+    });
+
+    expect(outcome.assessment?.score).toBe(0);
+    expect(outcome.assessment?.intention).toBe("allow");
+    expect(enforcementCalls).toBe(1);
   });
 });
