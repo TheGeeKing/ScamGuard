@@ -13,12 +13,17 @@ import {
   type StoredGuildSettings,
 } from "./guild-settings";
 import { createIncidentRepository, type IncidentRepository } from "./incidents";
+import {
+  createPerceptualFingerprintRepository,
+  type PerceptualFingerprintRepository,
+} from "./perceptual-fingerprints";
 
 export type Storage = {
   isAvailable(): boolean;
   guildSettings: StoredGuildSettings;
   incidents: IncidentRepository;
   fingerprints: FingerprintRepository;
+  perceptualFingerprints: PerceptualFingerprintRepository;
   close(): void;
 };
 
@@ -53,6 +58,7 @@ export function openStorage(
     guildSettings: createGuildSettingsRepository(database, defaults),
     incidents: createIncidentRepository(database),
     fingerprints: createFingerprintRepository(database),
+    perceptualFingerprints: createPerceptualFingerprintRepository(database),
     close: () => sqlite.close(true),
   };
 }

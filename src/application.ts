@@ -380,6 +380,7 @@ export function createApplication(
     start: async () => {
       const evidenceFiles = await loadEvidence(
         fileURLToPath(new URL("../evidence", import.meta.url)),
+        storage.perceptualFingerprints,
       );
       for (const evidence of evidenceFiles) {
         evidenceHashes.add(evidence.sha256);

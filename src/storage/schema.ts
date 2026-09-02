@@ -67,3 +67,14 @@ export const fingerprints = sqliteTable("fingerprints", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
 });
+
+export const perceptualFingerprints = sqliteTable("perceptual_fingerprints", {
+  id: text("id").primaryKey(),
+  sourceSha256: text("source_sha256").notNull(),
+  version: text("version").notNull(),
+  classification: text("classification", { enum: ["known", "safe"] }).notNull(),
+  guildId: text("guild_id"),
+  pdq: text("pdq").notNull(),
+  quality: integer("quality").notNull(),
+  crops: text("crops", { mode: "json" }).$type<string[]>().notNull(),
+});
