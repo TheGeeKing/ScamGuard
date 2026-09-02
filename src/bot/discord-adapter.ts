@@ -87,6 +87,10 @@ type OnboardingPort = {
 export const moderationLogChannelNotice =
   "This channel is now the ScamGuard moderation log.";
 
+function displaySignalKey(key: string): string {
+  return key.replace(/^(known|hot)-sha:([a-f\d]{7})[a-f\d]+$/i, "$1-sha:$2…");
+}
+
 function incidentButtons(messageId: string): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -121,7 +125,7 @@ export function incidentNotification(
     ? `https://discord.com/channels/${incident.guildId}/${incident.channelId}/${incident.messageId}`
     : null;
   const signals = incident.signals
-    .map((signal) => `${signal.key} (${signal.weight})`)
+    .map((signal) => `${displaySignalKey(signal.key)} (${signal.weight})`)
     .join(", ");
   const outcomes = incident.actionOutcomes
     .map((outcome) => `${outcome.action} ${outcome.status}`)

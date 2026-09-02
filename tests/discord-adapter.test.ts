@@ -20,7 +20,11 @@ describe("Discord adapter", () => {
       score: 100,
       intention: "timeout",
       signals: [
-        { key: "known-fingerprint", group: "fingerprint", weight: 100 },
+        {
+          key: `known-sha:${"abcdef0123456789".repeat(4)}`,
+          group: "fingerprint",
+          weight: 100,
+        },
       ],
       intendedActions: ["timeout", "delete"],
       actionOutcomes: [],
@@ -37,6 +41,10 @@ describe("Discord adapter", () => {
       "https://discord.com/channels/guild-1/channel-1/123456789",
     );
     expect(JSON.stringify(container)).toContain("<@user-1>");
+    expect(JSON.stringify(container)).toContain("known-sha:abcdef0…");
+    expect(JSON.stringify(container)).not.toContain(
+      "abcdef0123456789".repeat(4),
+    );
     expect(JSON.stringify(container)).not.toContain("Open flagged message");
     expect(JSON.stringify(container)).toContain(
       "scamguard:incident:false-positive:123456789",
