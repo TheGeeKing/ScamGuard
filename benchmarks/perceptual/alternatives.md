@@ -100,10 +100,14 @@ tolerance must remain a separate region-based representation.
 
 ### Crop tolerance: bounded PDQ crop pyramid
 
-The segmentation prototype was rejected after a curated image collapsed to a
-single region and another lost its close matches at a 20% crop. A 64-bit dHash
-crop grid was also rejected because visually related and unrelated regions were
-not separated reliably enough.
+The first segmentation prototype was rejected after a curated image collapsed
+to a single region and another lost its close matches at a 20% crop. A 64-bit
+dHash crop grid was also rejected because visually related and unrelated
+regions were not separated reliably enough. Production feedback later exposed
+a different gap: a severe asymmetric crop changed the image boundary and aspect
+ratio beyond what the bounded PDQ windows represented. A bounded bright/dark
+region multihash now complements the PDQ pyramid for that case; it does not
+replace whole-image PDQ.
 
 The successful prototype computes PDQ for the full image and a 3-by-3 grid at
 95%, 90%, and 80% scale: at most 28 hashes, or 896 raw hash bytes per reference.
@@ -114,12 +118,11 @@ one second per positive or negative test after normalization. These are useful
 prototype results, not production thresholds; the full transformation and
 negative-corpus benchmark remains mandatory.
 
-This crop pyramid is simpler and more predictable for ScamGuard's bounded
-worker queue than content-dependent segmentation. Its explicit 20% crop ceiling
-is acceptable for the approved benchmark target; expanding the grid requires a
-new algorithm version and benchmark rather than a hidden behavior change.
+The crop pyramid remains the primary, predictable representation for modest
+crops. The versioned segmented multihash covers severe boundary changes with at
+most 20 additional hashes, keeping worker cost bounded.
 
-### Rejected crop-segmentation alternative
+### Adapted crop-segmentation alternative
 
 The crop-resistant algorithm used by Python ImageHash and `imagehash-web`
 resizes to a segmentation image, produces bright and dark regions with a
@@ -129,9 +132,10 @@ hashes are close. This is materially different from one whole-image pHash.
 [Python ImageHash implementation](https://github.com/JohannesBuchner/imagehash/blob/master/imagehash/__init__.py),
 [imagehash-web implementation](https://github.com/simon987/imagehash-web/blob/main/lib/cropResistantHash.js)
 
-The established algorithm remains documented as a rejected alternative rather
-than a dependency to reinstall. `imagehash-web` itself is MIT-licensed; Python
-ImageHash is BSD-2-Clause. [imagehash-web license](https://github.com/simon987/imagehash-web/blob/main/LICENSE),
+ScamGuard ports only the small segmentation idea over its existing decoded RGB
+buffer and hashes bounded regions locally. It does not reinstall
+`imagehash-web`, Canvas, or Python. `imagehash-web` itself is MIT-licensed;
+Python ImageHash is BSD-2-Clause. [imagehash-web license](https://github.com/simon987/imagehash-web/blob/main/LICENSE),
 [Python ImageHash license](https://github.com/JohannesBuchner/imagehash/blob/master/LICENSE)
 
 ## Candidate comparison

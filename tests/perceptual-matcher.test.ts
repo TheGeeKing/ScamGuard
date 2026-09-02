@@ -1,9 +1,12 @@
 import { expect, test } from "bun:test";
-import type { PerceptualHash } from "../src/perceptual/hash";
+import {
+  PERCEPTUAL_VERSION,
+  type PerceptualHash,
+} from "../src/perceptual/hash";
 import { matchPerceptual } from "../src/perceptual/matcher";
 
 const hash = (pdq: string): PerceptualHash => ({
-  version: "pdq-crops-v1",
+  version: PERCEPTUAL_VERSION,
   pdq,
   quality: 100,
   crops: [],

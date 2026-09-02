@@ -56,7 +56,7 @@ describe("curated Evidence loading", () => {
     const second = await loadEvidence(root, cache);
 
     expect(first[0]?.perceptual?.version).toBe(PERCEPTUAL_VERSION);
-    expect(first[0]?.perceptual?.crops).toHaveLength(28);
+    expect(first[0]?.perceptual?.crops.length).toBeGreaterThan(28);
     expect(second).toEqual(first);
     expect(writes).toBe(1);
   });

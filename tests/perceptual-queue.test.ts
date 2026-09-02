@@ -3,7 +3,7 @@ import type { PerceptualHash } from "../src/perceptual/hash";
 import { createPerceptualQueue } from "../src/perceptual/queue";
 
 const result: PerceptualHash = {
-  version: "pdq-crops-v1",
+  version: "pdq-crops-segments-v2",
   pdq: "a".repeat(64),
   quality: 100,
   crops: ["a".repeat(64)],
