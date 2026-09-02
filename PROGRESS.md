@@ -116,6 +116,8 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   PDQ pipeline for observation-only production integration.
 - Forwarded bounded, validated image bytes in memory to the forthcoming
   perceptual worker seam without persisting raw images.
+- Promoted the versioned portable PDQ and crop-pyramid hasher into production
+  code and verified the production-only Alpine dependency install.
 
 ## Next
 
