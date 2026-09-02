@@ -4,6 +4,7 @@ import {
   announceModerationLogChannel,
   discordGatewayIntents,
   incidentNotification,
+  mergeIncidentNotifications,
   moderationLogChannelNotice,
   parseIncidentButton,
   runOnboarding,
@@ -41,6 +42,7 @@ describe("Discord adapter", () => {
       "https://discord.com/channels/guild-1/channel-1/123456789",
     );
     expect(JSON.stringify(container)).toContain("<@user-1>");
+    expect(JSON.stringify(container)).not.toContain("<#channel-1>");
     expect(JSON.stringify(container)).toContain("known-sha:abcdef0…");
     expect(JSON.stringify(container)).not.toContain(
       "abcdef0123456789".repeat(4),
@@ -56,6 +58,43 @@ describe("Discord adapter", () => {
       action: "safe",
       messageId: "123456789",
     });
+  });
+
+  test("merges a user's messages and signals into one evolving Incident alert", () => {
+    const first = mergeIncidentNotifications(undefined, {
+      guildId: "guild-1",
+      channelId: "channel-a",
+      messageId: "message-a",
+      userId: "user-1",
+      score: 100,
+      intention: "timeout",
+      signals: [{ key: "known", group: "fingerprint", weight: 100 }],
+      intendedActions: ["timeout", "delete"],
+      actionOutcomes: [
+        { action: "timeout", targetId: "user-1", status: "succeeded" },
+      ],
+      latencyMs: 400,
+    });
+    const merged = mergeIncidentNotifications(first, {
+      ...first,
+      channelId: "channel-b",
+      messageId: "message-b",
+      signals: [
+        { key: "known", group: "fingerprint", weight: 100 },
+        { key: "spread", group: "channel-spread", weight: 30 },
+      ],
+      actionOutcomes: [
+        { action: "delete", targetId: "message-b", status: "succeeded" },
+      ],
+    });
+    expect(merged.messages).toEqual([
+      { channelId: "channel-a", messageId: "message-a" },
+      { channelId: "channel-b", messageId: "message-b" },
+    ]);
+    expect(merged.signals.map((signal) => signal.key)).toEqual([
+      "known",
+      "spread",
+    ]);
   });
 
   test("requests only the guild message intents ScamGuard needs", () => {

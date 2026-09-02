@@ -118,12 +118,53 @@ type IncidentNotification = Pick<
   | "userId"
 >;
 
+type IncidentAlert = IncidentNotification & {
+  messages: { channelId: string | null; messageId: string }[];
+};
+
+export function mergeIncidentNotifications(
+  current: IncidentAlert | undefined,
+  next: IncidentNotification,
+): IncidentAlert {
+  const messages = [
+    ...(current?.messages ?? []),
+    { channelId: next.channelId, messageId: next.messageId },
+  ].filter(
+    (message, index, all) =>
+      all.findIndex(
+        (candidate) => candidate.messageId === message.messageId,
+      ) === index,
+  );
+  if (!current) return { ...next, messages };
+  const signals = [...current.signals, ...next.signals].filter(
+    (signal, index, all) =>
+      all.findIndex((candidate) => candidate.key === signal.key) === index,
+  );
+  const rank = { allow: 0, suspicious: 1, delete: 2, timeout: 3 } as const;
+  return {
+    ...current,
+    score: Math.max(current.score, next.score),
+    intention:
+      rank[next.intention] > rank[current.intention]
+        ? next.intention
+        : current.intention,
+    signals,
+    intendedActions: [
+      ...new Set([...current.intendedActions, ...next.intendedActions]),
+    ],
+    actionOutcomes: [...current.actionOutcomes, ...next.actionOutcomes],
+    latencyMs: Math.max(current.latencyMs, next.latencyMs),
+    messages,
+  };
+}
+
 export function incidentNotification(
-  incident: IncidentNotification,
+  incident: IncidentNotification | IncidentAlert,
 ): MessageCreateOptions & { components: ContainerBuilder[] } {
-  const messageUrl = incident.channelId
-    ? `https://discord.com/channels/${incident.guildId}/${incident.channelId}/${incident.messageId}`
-    : null;
+  const messages =
+    "messages" in incident
+      ? incident.messages
+      : [{ channelId: incident.channelId, messageId: incident.messageId }];
   const signals = incident.signals
     .map((signal) => `${displaySignalKey(signal.key)} (${signal.weight})`)
     .join(", ");
@@ -134,7 +175,15 @@ export function incidentNotification(
     (outcome) =>
       outcome.status === "succeeded" && outcome.action.includes("delete"),
   ).length;
-  const link = messageUrl ?? "Source message unavailable";
+  const visibleMessages = messages
+    .slice(0, 20)
+    .map(({ channelId, messageId }) =>
+      channelId
+        ? `- https://discord.com/channels/${incident.guildId}/${channelId}/${messageId}`
+        : `- Message ${messageId} (source unavailable)`,
+    );
+  if (messages.length > visibleMessages.length)
+    visibleMessages.push(`- ${messages.length - visibleMessages.length} more`);
   return {
     flags: MessageFlags.IsComponentsV2,
     allowedMentions: { users: [incident.userId] },
@@ -145,8 +194,9 @@ export function incidentNotification(
           new TextDisplayBuilder().setContent(
             [
               "# ScamGuard Incident",
-              `Flagged user: <@${incident.userId}> · ${link}`,
+              `Flagged user: <@${incident.userId}>`,
               `### Score: ${incident.score} · ${incident.intention}`,
+              `**Affected messages**\n${visibleMessages.join("\n")}`,
               `**Signals**\n${signals || "None"}`,
               `**Desired actions**\n${incident.intendedActions.join(", ") || "None"}`,
               `**Outcomes**\n${outcomes || "None"}`,
@@ -303,6 +353,11 @@ export function createDiscordBot(options: {
   }): Promise<string>;
 }): DiscordBot {
   const client = new Client({ intents: discordGatewayIntents });
+  const incidentAlerts = new Map<
+    string,
+    { incident: IncidentAlert; message: Message; updatedAt: number }
+  >();
+  const incidentAlertLocks = new Map<string, Promise<void>>();
 
   client.once("clientReady", async () => {
     const guild = await client.guilds.fetch(options.guildId);
@@ -491,13 +546,43 @@ export function createDiscordBot(options: {
     start: () => client.login(options.token).then(() => undefined),
     isConnected: () => client.isReady(),
     notify: async (incident) => {
-      const settings = await options.settings.get(incident.guildId);
-      if (!settings.moderationLogChannelId) return;
-      const channel = await client.channels.fetch(
-        settings.moderationLogChannelId,
-      );
-      if (channel?.isSendable()) {
-        await channel.send(incidentNotification(incident));
+      const key = `${incident.guildId}:${incident.userId}`;
+      const pending = (incidentAlertLocks.get(key) ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(async () => {
+          const settings = await options.settings.get(incident.guildId);
+          if (!settings.moderationLogChannelId) return;
+          const channel = await client.channels.fetch(
+            settings.moderationLogChannelId,
+          );
+          if (!channel?.isSendable()) return;
+          const existing = incidentAlerts.get(key);
+          const current =
+            existing && Date.now() - existing.updatedAt < 5 * 60 * 1000
+              ? existing
+              : undefined;
+          const merged = mergeIncidentNotifications(
+            current?.incident,
+            incident,
+          );
+          const notification = incidentNotification(merged);
+          const message = current
+            ? await current.message.edit({
+                components: notification.components,
+              })
+            : await channel.send(notification);
+          incidentAlerts.set(key, {
+            incident: merged,
+            message,
+            updatedAt: Date.now(),
+          });
+        });
+      incidentAlertLocks.set(key, pending);
+      try {
+        await pending;
+      } finally {
+        if (incidentAlertLocks.get(key) === pending)
+          incidentAlertLocks.delete(key);
       }
     },
     timeoutMember: async (guildId, userId, minutes) => {

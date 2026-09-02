@@ -42,6 +42,7 @@ Tickets 01–10 complete; the initial release implementation is complete.
 - In dry-run mode, record intended actions without creating local blocked state or applying Discord actions.
 - **Mark as scam** stores every eligible attachment hash and applies mode-appropriate moderation to the selected message and sender.
 - **False positive** and **Mark as safe** reverse a timeout only when that Incident records a successful ScamGuard timeout.
+- Merge a user's qualifying Incidents into one evolving five-minute alert that lists affected channels and accumulated Signals.
 - Permit in-memory burst, cleanup, and blocked-user state to reset on process restart in v1.
 - Retain Incidents for 30 days by default and expose `/scam retention <days>`.
 - Plan community reporting as a later, explicit opt-in feature rather than part of the first release.

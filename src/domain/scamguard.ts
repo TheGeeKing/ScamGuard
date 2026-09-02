@@ -160,12 +160,7 @@ export function createScamGuard(ports: Ports): {
       reviewedAt: null,
     };
     await ports.saveIncident(incident);
-    const enforcementTransition =
-      incident.intention !== "timeout" ||
-      incident.moderationMode !== "enforce" ||
-      actionOutcomes.some((outcome) => outcome.action === "timeout");
-    if (settings.moderationLogChannelId && enforcementTransition)
-      await ports.notify(incident);
+    if (settings.moderationLogChannelId) await ports.notify(incident);
   };
 
   return {
