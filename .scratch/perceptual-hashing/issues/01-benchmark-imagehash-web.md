@@ -4,14 +4,17 @@
 
 **Blocked by:** none
 
-**Status:** in-progress
+**Status:** wontfix
 
-- [ ] Runs with the repository's Bun version on Windows.
-- [ ] Runs inside the Linux production image.
-- [ ] Repeated runs produce stable hashes.
-- [ ] Deterministic positive transformations measure pHash and crop-resistant recall.
-- [ ] Unrelated images measure false-positive behavior.
-- [ ] Per-image latency and failures are reported.
-- [ ] Results are committed as Markdown with a clear go/no-go recommendation.
-- [ ] Production detection, scoring, and Discord behavior remain unchanged.
-- [ ] Tests, TypeScript, and Biome pass.
+- [x] Windows compatibility attempt is documented; installation fails at `canvas@2.11.2`.
+- [x] Linux production-image compatibility attempt is documented; installation fails at `canvas@2.11.2`.
+- [x] Stability, accuracy, false-positive, and latency gates are explicitly marked not measurable after the prerequisite failure.
+- [x] Results are committed as Markdown with a clear no-go recommendation.
+- [x] Production dependencies, detection, scoring, and Discord behavior remain unchanged.
+- [x] Tests, TypeScript, and Biome pass.
+
+## Result
+
+Evaluation completed with a no-go decision for this candidate.
+
+See [`benchmarks/perceptual/imagehash-web-3.1.1.md`](../../../benchmarks/perceptual/imagehash-web-3.1.1.md).

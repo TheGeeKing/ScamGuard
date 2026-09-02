@@ -105,5 +105,5 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
 
 ## Next
 
-- Complete and review the `imagehash-web` Bun/Windows and Bun/Linux benchmark.
+- Select and benchmark a Bun-compatible alternative to `imagehash-web`; version 3.1.1 failed both required compatibility gates.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.
