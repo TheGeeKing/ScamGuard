@@ -12,7 +12,6 @@ export type AppConfig = {
   maxImageBytes: number;
   imageDownloadTimeoutMs: number;
   externalImageFetchEnabled: boolean;
-  fastAnalysisBudgetMs: number;
   healthHost: string;
   healthPort: number;
   moderationMode: ModerationMode;
@@ -105,11 +104,6 @@ export function loadConfig(
       environment,
       "EXTERNAL_IMAGE_FETCH_ENABLED",
       true,
-    ),
-    fastAnalysisBudgetMs: readInteger(
-      environment,
-      "FAST_ANALYSIS_BUDGET_MS",
-      100,
     ),
     healthHost,
     healthPort: readInteger(environment, "HEALTH_PORT", 3000, 65_535),

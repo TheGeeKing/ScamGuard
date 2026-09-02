@@ -20,7 +20,6 @@ describe("application configuration", () => {
       maxImageBytes: 10 * 1024 * 1024,
       imageDownloadTimeoutMs: 10_000,
       externalImageFetchEnabled: true,
-      fastAnalysisBudgetMs: 100,
       healthHost: "127.0.0.1",
       healthPort: 3000,
       moderationMode: "dry-run",
