@@ -24,14 +24,21 @@ ScamGuard does not need the Administrator permission. Administrators who use
 
 Use a disposable server and real credentials only for this manual check:
 
-1. Start ScamGuard with `DISCORD_TOKEN` and that server's `GUILD_ID`.
-2. Confirm the bot connects and `/scam` appears in that server, but not another.
-3. Confirm setup instructions arrive in the system channel. If it is unavailable,
+1. Create an application in the Discord Developer Portal, add a bot, copy its token into `DISCORD_TOKEN`, and enable **Message Content Intent**.
+2. Invite it to a disposable server with the `bot` and `applications.commands` scopes and only the permissions listed above. Set that server ID as `GUILD_ID`.
+3. Start ScamGuard and confirm `GET /health` returns HTTP 200.
+4. Confirm the bot connects and `/scam` appears in that server, but not another.
+5. Confirm setup instructions arrive in the system channel. If it is unavailable,
    confirm the server owner receives the DM; if both fail, run `/scam status`.
-4. Run `/scam status` and confirm Discord and the database are available, the
+6. Run `/scam status` and confirm Discord and the database are available, the
    configured mode is shown, and the moderation log starts as not configured.
-5. Set a text channel with `/scam log-channel`, then confirm `/health` reports
+7. Set a text channel with `/scam log-channel`, then confirm `/health` reports
    `moderationLog` as `configured`.
-6. Add one channel to the ignore list. Send one message there and one in a normal
-   channel; application logs should show no error while only the latter reaches
-   the eligible-message hook.
+8. In `dry-run`, use **Mark as scam** on a message with a test image. Confirm the Incident shows the known-SHA Signal and intended actions without deleting or timing out.
+9. Post the same test image rapidly across at least three channels. Confirm the report names the flood Signals and includes every attachment.
+10. Switch to `delete`; repeat and confirm qualifying messages are deleted without a timeout.
+11. Switch to `enforce`; repeat and confirm one timeout attempt, triggering-message deletion, and five-minute observed-message cleanup.
+12. Use **Mark as safe** on the test image. Confirm linked Incidents become false-positive and a new copy no longer receives the fingerprint Signal. Existing timeouts must not be reversed automatically.
+13. Run `/scam false-positive <incident-id>` on another Incident and confirm the public review acknowledgement.
+14. Restart ScamGuard. Confirm settings and Incidents remain, while rolling flood and local-block state start empty.
+15. Stop with SIGTERM or `docker compose stop`; confirm structured shutdown events appear and the process exits within 15 seconds.

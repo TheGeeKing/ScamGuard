@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Tickets 01–09 complete; ticket 10 is the blocker frontier.
+Tickets 01–10 complete; the initial release implementation is complete.
 
 ## Confirmed constraints
 
@@ -99,7 +99,8 @@ Tickets 01–09 complete; ticket 10 is the blocker frontier.
 - Completed ticket 07: raw curated Evidence loading, local known/safe/hot fingerprints, moderator message actions, and re-evaluation.
 - Completed ticket 08: ordered idempotent Discord enforcement, local flood blocking, five-minute cleanup, and persisted action outcomes.
 - Completed ticket 09: explainable Incident reports, false-positive review, and scheduled retention cleanup.
+- Completed ticket 10: structured operations, graceful shutdown, hardened Compose runtime, and operator documentation.
 
 ## Next
 
-- Implement ticket 10: harden and document the release.
+- Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.

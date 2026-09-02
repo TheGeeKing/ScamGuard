@@ -1,21 +1,25 @@
 import { createApplication } from "./application";
+import { writeLog } from "./logging";
 
 const application = createApplication(process.env);
 const healthServer = application.serveHealth();
 void application.start().catch((error: unknown) => {
-  console.error("ScamGuard could not connect to Discord", error);
+  writeLog("error", "discord.connection-failed", {
+    error: error instanceof Error ? error.name : "unknown",
+  });
 });
 
-console.log(
-  `ScamGuard health listening on ${healthServer.hostname}:${healthServer.port}`,
-);
+writeLog("info", "health.started", {
+  hostname: healthServer.hostname ?? null,
+  port: healthServer.port ?? null,
+});
 
 let stopping = false;
 function stop(): void {
   if (stopping) return;
   stopping = true;
-  void healthServer.stop().finally(() => {
-    application.close();
+  void healthServer.stop().finally(async () => {
+    await application.close();
     process.exit(0);
   });
 }

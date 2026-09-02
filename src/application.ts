@@ -18,6 +18,7 @@ import {
   isApprovedDiscordMediaUrl,
 } from "./images/discord-images";
 import { fetchExternalImage } from "./images/external-fetch";
+import { writeLog } from "./logging";
 import { openStorage } from "./storage/database";
 
 export type HealthStatus = {
@@ -31,7 +32,7 @@ export type Application = {
   health(): HealthStatus;
   start(): Promise<void>;
   serveHealth(): ReturnType<typeof Bun.serve>;
-  close(): void;
+  close(): Promise<void>;
 };
 
 export function createApplication(
@@ -50,15 +51,24 @@ export function createApplication(
     trustedRoleIds: [],
   });
   let moderationLogConfigured = false;
+  let acceptingMessages = true;
+  const inFlight = new Set<Promise<unknown>>();
+  const track = <T>(operation: () => Promise<T>): Promise<T> => {
+    const pending = operation();
+    inFlight.add(pending);
+    void pending.then(
+      () => inFlight.delete(pending),
+      () => inFlight.delete(pending),
+    );
+    return pending;
+  };
   let missingLogWarned = false;
   let retentionTimer: ReturnType<typeof setInterval> | undefined;
   const refreshSettings = async (): Promise<void> => {
     const settings = await storage.guildSettings.get(config.guildId);
     moderationLogConfigured = settings.moderationLogChannelId !== null;
     if (!moderationLogConfigured && !missingLogWarned) {
-      console.warn(
-        "ScamGuard moderation log is not configured; run /scam log-channel.",
-      );
+      writeLog("warn", "moderation-log.missing", { guildId: config.guildId });
       missingLogWarned = true;
     }
   };
@@ -93,42 +103,44 @@ export function createApplication(
     incidents: storage.incidents,
     databaseAvailable: storage.isAvailable,
     onSettingsChanged: refreshSettings,
-    onEligibleMessage: (event) => dispatchMessage(event),
-    onFingerprintReview: async (review) => {
-      const fingerprints = await fingerprintSources(review.imageSources);
-      const result = await applyFingerprintReview(
-        {
-          action: review.action,
+    onEligibleMessage: (event) =>
+      acceptingMessages ? track(() => dispatchMessage(event)) : undefined,
+    onFingerprintReview: (review) =>
+      track(async () => {
+        const fingerprints = await fingerprintSources(review.imageSources);
+        const result = await applyFingerprintReview(
+          {
+            action: review.action,
+            guildId: review.guildId,
+            moderatorId: review.moderatorId,
+            sha256: fingerprints.flatMap((outcome) =>
+              outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+            ),
+          },
+          storage.fingerprints,
+          new Date(),
+        );
+        if (review.action === "safe") {
+          await storage.incidents.markFalsePositiveByHashes(
+            review.guildId,
+            fingerprints.flatMap((outcome) =>
+              outcome.status === "fingerprinted" ? [outcome.sha256] : [],
+            ),
+            review.moderatorId,
+            new Date(),
+          );
+        }
+        await scamGuard.dispatch({
+          kind: "moderator-review",
           guildId: review.guildId,
-          moderatorId: review.moderatorId,
+          messageId: review.messageId,
+          action: review.action,
           sha256: fingerprints.flatMap((outcome) =>
             outcome.status === "fingerprinted" ? [outcome.sha256] : [],
           ),
-        },
-        storage.fingerprints,
-        new Date(),
-      );
-      if (review.action === "safe") {
-        await storage.incidents.markFalsePositiveByHashes(
-          review.guildId,
-          fingerprints.flatMap((outcome) =>
-            outcome.status === "fingerprinted" ? [outcome.sha256] : [],
-          ),
-          review.moderatorId,
-          new Date(),
-        );
-      }
-      await scamGuard.dispatch({
-        kind: "moderator-review",
-        guildId: review.guildId,
-        messageId: review.messageId,
-        action: review.action,
-        sha256: fingerprints.flatMap((outcome) =>
-          outcome.status === "fingerprinted" ? [outcome.sha256] : [],
-        ),
-      });
-      return result.message;
-    },
+        });
+        return result.message;
+      }),
   });
   const enforcer = createModerationEnforcer({
     timeoutMember: discord.timeoutMember,
@@ -141,6 +153,23 @@ export function createApplication(
     getSettings: storage.guildSettings.get,
     saveIncident: async (incident) => {
       await storage.incidents.save(incident);
+      writeLog("info", "incident.persisted", {
+        guildId: incident.guildId,
+        messageId: incident.messageId,
+        score: incident.score,
+      });
+      for (const outcome of incident.actionOutcomes) {
+        writeLog(
+          outcome.status === "failed" ? "warn" : "info",
+          "action.completed",
+          {
+            guildId: incident.guildId,
+            messageId: incident.messageId,
+            action: outcome.action,
+            status: outcome.status,
+          },
+        );
+      }
       if (!shouldPromoteHotFingerprint(incident)) return;
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
       for (const sha256 of incident.imageEvidence.flatMap((evidence) =>
@@ -238,7 +267,15 @@ export function createApplication(
         );
       return;
     }
-    await scamGuard.dispatch(event);
+    const outcome = await scamGuard.dispatch(event);
+    if (outcome.kind === "assessed") {
+      writeLog("info", "assessment.completed", {
+        guildId: event.guildId,
+        messageId: event.messageId,
+        score: outcome.assessment.score,
+        intention: outcome.assessment.intention,
+      });
+    }
   };
 
   const health = (): HealthStatus => ({
@@ -261,8 +298,10 @@ export function createApplication(
       await expireIncidents();
       retentionTimer = setInterval(
         () => {
-          void expireIncidents().catch((error) =>
-            console.error("ScamGuard Incident cleanup failed", error),
+          void expireIncidents().catch(() =>
+            writeLog("error", "incident-cleanup.failed", {
+              guildId: config.guildId,
+            }),
           );
         },
         60 * 60 * 1000,
@@ -275,10 +314,21 @@ export function createApplication(
         { hostname: config.healthHost, port: config.healthPort },
         health,
       ),
-    close: () => {
+    close: async () => {
+      acceptingMessages = false;
       if (retentionTimer) clearInterval(retentionTimer);
       discord.close();
+      writeLog("info", "shutdown.started", { inFlight: inFlight.size });
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        Promise.allSettled([...inFlight]),
+        new Promise((resolve) => {
+          deadline = setTimeout(resolve, 10_000);
+        }),
+      ]);
+      if (deadline) clearTimeout(deadline);
       storage.close();
+      writeLog("info", "shutdown.completed");
     },
   };
 }

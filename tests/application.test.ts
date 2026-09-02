@@ -33,7 +33,7 @@ describe("application startup", () => {
         moderationLog: "not-configured",
       });
     } finally {
-      application.close();
+      await application.close();
     }
   });
 });

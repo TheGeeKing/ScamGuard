@@ -1,7 +1,14 @@
 services:
   scamguard:
     build: .
+    init: true
+    read_only: true
     restart: unless-stopped
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in .env}
       GUILD_ID: ${GUILD_ID:?Set GUILD_ID in .env}
@@ -22,6 +29,8 @@ services:
       - "127.0.0.1:${HEALTH_PORT:-3000}:3000"
     volumes:
       - scamguard-data:/data
+    tmpfs:
+      - /tmp
     healthcheck:
       test:
         [
