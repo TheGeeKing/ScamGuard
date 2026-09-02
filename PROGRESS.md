@@ -122,6 +122,8 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   and scope, recomputing only changed Evidence.
 - Added the bounded fair analysis queue and persistent replaceable Bun worker
   without connecting it to fast-path moderation.
+- Exposed the approved analysis admission, fairness, and timeout limits through
+  environment variables and the production-like Compose workflow.
 
 ## Next
 

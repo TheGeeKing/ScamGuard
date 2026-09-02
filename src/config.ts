@@ -12,6 +12,11 @@ export type AppConfig = {
   maxImageBytes: number;
   imageDownloadTimeoutMs: number;
   externalImageFetchEnabled: boolean;
+  perceptualQueueMaxJobs: number;
+  perceptualQueueMaxBytes: number;
+  perceptualMaxJobsPerUser: number;
+  perceptualQueueQuantum: number;
+  perceptualAnalysisTimeoutMs: number;
   healthHost: string;
   healthPort: number;
   moderationMode: ModerationMode;
@@ -104,6 +109,31 @@ export function loadConfig(
       environment,
       "EXTERNAL_IMAGE_FETCH_ENABLED",
       true,
+    ),
+    perceptualQueueMaxJobs: readInteger(
+      environment,
+      "PERCEPTUAL_QUEUE_MAX_JOBS",
+      32,
+    ),
+    perceptualQueueMaxBytes: readInteger(
+      environment,
+      "PERCEPTUAL_QUEUE_MAX_BYTES",
+      64 * 1024 * 1024,
+    ),
+    perceptualMaxJobsPerUser: readInteger(
+      environment,
+      "PERCEPTUAL_MAX_JOBS_PER_USER",
+      4,
+    ),
+    perceptualQueueQuantum: readInteger(
+      environment,
+      "PERCEPTUAL_QUEUE_QUANTUM",
+      2,
+    ),
+    perceptualAnalysisTimeoutMs: readInteger(
+      environment,
+      "PERCEPTUAL_ANALYSIS_TIMEOUT_MS",
+      5_000,
     ),
     healthHost,
     healthPort: readInteger(environment, "HEALTH_PORT", 3000, 65_535),

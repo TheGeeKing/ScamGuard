@@ -27,6 +27,11 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 | `MAX_IMAGE_BYTES` | `10485760` | Maximum bytes per image |
 | `IMAGE_DOWNLOAD_TIMEOUT_MS` | `10000` | Image download deadline |
 | `EXTERNAL_IMAGE_FETCH_ENABLED` | `true` | Guarded external embed fetching |
+| `PERCEPTUAL_QUEUE_MAX_JOBS` | `32` | Maximum active and queued analyses |
+| `PERCEPTUAL_QUEUE_MAX_BYTES` | `67108864` | Maximum encoded bytes held by analyses |
+| `PERCEPTUAL_MAX_JOBS_PER_USER` | `4` | Outstanding analyses per guild/user |
+| `PERCEPTUAL_QUEUE_QUANTUM` | `2` | Jobs served before rotating users |
+| `PERCEPTUAL_ANALYSIS_TIMEOUT_MS` | `5000` | Worker deadline before replacement/retry |
 | `HEALTH_HOST` / `HEALTH_PORT` | `127.0.0.1` / `3000` | Health listener |
 
 `/scam` provides `status`, `mode`, `thresholds`, `timeout`, `retention`, `log-channel`, `ignore-channel`, `trusted-role`, and `false-positive`. Successful setting changes are visible in-channel; status and errors are ephemeral. Moderators can also use **Mark as scam** and **Mark as safe** from a message context menu.
