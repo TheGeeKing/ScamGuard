@@ -106,9 +106,13 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   the Bun Alpine runtime without Python and a native toolchain.
 - Validated a deterministic, cross-platform Bun.Image + `pngjs` + `pdq-wasm`
   whole-image pipeline and confirmed that crop resistance needs a separate
-  region multihash.
+  crop multihash.
+- Prototyped a bounded 28-hash PDQ crop pyramid that recognizes the agreed
+  5%, 10%, and 20% crop fixtures after rejecting unreliable segmentation and
+  64-bit dHash variants.
 
 ## Next
 
-- Benchmark a Bun-native region multihash for crop-resistant matching.
+- Run the complete transformation, worker, latency, and negative-corpus gate
+  before choosing production distance thresholds.
 - Run the documented manual smoke test in a disposable Discord development server before enabling enforcement in production.

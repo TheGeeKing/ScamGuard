@@ -2,7 +2,7 @@
 
 Date: 2026-09-02
 
-Decision: **SPIKE BUN.IMAGE + PURE-JS PNG DECODE + PDQ-WASM**
+Decision: **BUN.IMAGE + PURE-JS PNG DECODE + PDQ-WASM CROP PYRAMID**
 
 ## Constraints
 
@@ -19,7 +19,7 @@ validated image bytes
   -> Bun.Image (portable backend, resize, PNG encode)
   -> pngjs or fast-png (PNG -> bounded RGBA/RGB pixels)
   -> pdq-wasm (whole-image 256-bit PDQ hash)
-  -> internal crop segmentation + segment hashes (crop-resistant multihash)
+  -> bounded multiscale crop grid + PDQ hashes (crop-resistant multihash)
 ```
 
 This is the strongest next spike because it keeps all external dependencies
@@ -68,7 +68,8 @@ The package is young and maintained by a small project, so it is a candidate,
 not an automatic production choice. Direct Bun 1.4.0 probes produced the same
 hash and quality from both a synthetic 64-by-64 luma buffer and a real curated
 JPEG on Windows x64 and `oven/bun:1.4.0-alpine`, with no native build. The real
-image produced `97bdb829…734c5f93` with quality 100 in both environments. Both
+image produced `97bdb829…734c5f93` with quality 100 in both environments before
+bounded normalization was added. Both
 succeeded only when
 `pdq-wasm` was loaded through CommonJS. Its ESM export reaches a loader branch
 where `require` is unavailable and throws `PDQ WASM module not available`.
@@ -92,11 +93,33 @@ package. [Meta PDQ hasher source](https://github.com/facebook/ThreatExchange/blo
 
 The real-image probe also confirms that whole-image PDQ is insufficient for
 ScamGuard's crop requirement. Center crops removing 5%, 10%, and 20% of the
-image produced Hamming distances 52, 90, and 128 respectively from the original.
+image produced Hamming distances 48, 86, and 126 respectively from the
+512-pixel normalized original.
 Even the smallest crop exceeds Meta's suggested initial distance of 31, so crop
 tolerance must remain a separate region-based representation.
 
-### Crop tolerance: keep the algorithm, drop the failed dependency
+### Crop tolerance: bounded PDQ crop pyramid
+
+The segmentation prototype was rejected after a curated image collapsed to a
+single region and another lost its close matches at a 20% crop. A 64-bit dHash
+crop grid was also rejected because visually related and unrelated regions were
+not separated reliably enough.
+
+The successful prototype computes PDQ for the full image and a 3-by-3 grid at
+95%, 90%, and 80% scale: at most 28 hashes, or 896 raw hash bytes per reference.
+On a 512-pixel normalized image, the closest distances for 5%, 10%, and 20%
+center crops were 12, 12, and 10. A visually unrelated curated pair measured
+112. The Windows benchmark fell from seconds on full-resolution inputs to under
+one second per positive or negative test after normalization. These are useful
+prototype results, not production thresholds; the full transformation and
+negative-corpus benchmark remains mandatory.
+
+This crop pyramid is simpler and more predictable for ScamGuard's bounded
+worker queue than content-dependent segmentation. Its explicit 20% crop ceiling
+is acceptable for the approved benchmark target; expanding the grid requires a
+new algorithm version and benchmark rather than a hidden behavior change.
+
+### Rejected crop-segmentation alternative
 
 The crop-resistant algorithm used by Python ImageHash and `imagehash-web`
 resizes to a segmentation image, produces bright and dark regions with a
@@ -106,12 +129,8 @@ hashes are close. This is materially different from one whole-image pHash.
 [Python ImageHash implementation](https://github.com/JohannesBuchner/imagehash/blob/master/imagehash/__init__.py),
 [imagehash-web implementation](https://github.com/simon987/imagehash-web/blob/main/lib/cropResistantHash.js)
 
-Do not reinstall `imagehash-web`. Instead, if the PDQ decoding spike passes,
-adapt only its small MIT-licensed crop segmentation logic to operate on the
-already-normalized RGB buffer, preserve attribution, and keep the code internal
-and versioned. Benchmark the established default segment dHash first. Using PDQ
-for every segment is possible, but would increase WASM calls and storage before
-demonstrating a benefit. `imagehash-web` itself is MIT-licensed; Python
+The established algorithm remains documented as a rejected alternative rather
+than a dependency to reinstall. `imagehash-web` itself is MIT-licensed; Python
 ImageHash is BSD-2-Clause. [imagehash-web license](https://github.com/simon987/imagehash-web/blob/main/LICENSE),
 [Python ImageHash license](https://github.com/JohannesBuchner/imagehash/blob/master/LICENSE)
 
@@ -119,7 +138,7 @@ ImageHash is BSD-2-Clause. [imagehash-web license](https://github.com/simon987/i
 
 | Candidate | Install/decode path | Whole-image hash | Crop semantics | Maintenance/license | Assessment |
 | --- | --- | --- | --- | --- | --- |
-| **Bun.Image + pure-JS PNG decode + pdq-wasm** | Bun's bundled codecs, then `pngjs` (locally proven) or `fast-png`; no addon install | PDQ, WASM; CommonJS path currently required | Add the established segmentation multihash internally | Bun MIT; PNG decoders MIT; pdq-wasm BSD-3, young | **Recommended spike** |
+| **Bun.Image + pure-JS PNG decode + pdq-wasm** | Bun's bundled codecs, then `pngjs` (locally proven) or `fast-png`; no addon install | PDQ, WASM; CommonJS path currently required | Bounded PDQ crop pyramid passed the initial probe | Bun MIT; PNG decoders MIT; pdq-wasm BSD-3, young | **Recommended** |
 | **sharp + pdq-wasm** | Prebuilt Node-API/libvips packages exist for Windows x64 and Linux x64 musl; no compiler when the binary resolves | PDQ, WASM | Same internal segmentation multihash | sharp Apache-2.0, mature and active; pdq-wasm BSD-3 | **Fallback spike** if PNG round-trip cost or Bun.Image worker behavior fails |
 | **@napi-rs/canvas + imagehash-web logic** | Prebuilt Node-API Skia packages include Windows and Linux musl, but add a roughly 30 MB platform binary | pHash from imagehash-web | Existing crop-resistant hash | Canvas MIT and active; imagehash-web MIT, small project | Feasible experiment, but heavier and retains Canvas coupling |
 | **image-hash@7** | Pure-JS JPEG/PNG plus WASM WebP | Blockhash only | None | MIT; recent TypeScript package | Portable fallback signal, but does not satisfy PDQ/pHash plus crop resistance |

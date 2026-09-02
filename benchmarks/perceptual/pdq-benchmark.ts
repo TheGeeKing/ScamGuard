@@ -16,7 +16,11 @@ export async function decodeBenchmarkImage(
   path: string,
 ): Promise<BenchmarkPixels> {
   Bun.Image.backend = "bun";
-  const encoded = await Bun.file(path).image().png().buffer();
+  const encoded = await Bun.file(path)
+    .image({ maxPixels: 40_000_000 })
+    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .buffer();
   const image = PNG.sync.read(encoded);
   const rgb = new Uint8Array(image.width * image.height * 3);
   for (let source = 0, target = 0; source < image.data.length; source += 4) {

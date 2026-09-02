@@ -15,7 +15,7 @@ test("PDQ benchmark hashes a curated image deterministically", async () => {
 
   expect(first.hash).toMatch(/^[a-f\d]{64}$/);
   expect(first.hash).toBe(
-    "97bdb829d008c15e0f5ebead375270d2a0ad0f3e1e3c135899ad038b734c5f93",
+    "97bdb8294000c11e2f5eb6ad355370d2b2adaf3e1e3c175018ad0bab734c5f93",
   );
   expect(first.quality).toBeGreaterThan(49);
   expect(second).toEqual(first);
@@ -34,5 +34,5 @@ test("PDQ benchmark measures crop distance", async () => {
     ),
   );
 
-  expect(distances).toEqual([52, 90, 128]);
+  expect(distances).toEqual([48, 86, 126]);
 });
