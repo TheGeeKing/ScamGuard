@@ -104,6 +104,19 @@ describe("Discord adapter", () => {
     expect(rendered).toContain(
       "Deleted · https://discord.com/channels/guild-1/channel-b/message-b",
     );
+    const twoDeleted = incidentNotification({
+      ...merged,
+      actionOutcomes: [
+        { action: "delete", targetId: "message-b", status: "succeeded" },
+        { action: "delete", targetId: "message-a", status: "succeeded" },
+      ],
+    });
+    const twoDeletedRendered = JSON.stringify(
+      twoDeleted.components[0]?.toJSON(),
+    );
+    expect(twoDeletedRendered).toContain("**Outcomes**\\nDeleted 2 messages");
+    expect(twoDeletedRendered).not.toContain("delete succeeded");
+    expect(twoDeletedRendered).not.toContain("**Removed:**");
   });
 
   test("shows observation-only similarity as a simple signal", () => {

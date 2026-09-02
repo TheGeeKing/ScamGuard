@@ -172,13 +172,34 @@ export function incidentNotification(
         : `${displaySignalKey(signal.key)} (${signal.weight})`,
     )
     .join(", ");
-  const outcomes = incident.actionOutcomes
-    .map((outcome) => `${outcome.action} ${outcome.status}`)
+  const outcomeCount = (
+    action: "delete" | "timeout" | "timeout-reversal",
+    status: "intended" | "succeeded" | "failed",
+  ): number =>
+    incident.actionOutcomes.filter(
+      (outcome) =>
+        (action === "delete"
+          ? outcome.action.includes("delete")
+          : outcome.action === action) && outcome.status === status,
+    ).length;
+  const describeMessages = (count: number, verb: string): string | null =>
+    count > 0 ? `${verb} ${count} message${count === 1 ? "" : "s"}` : null;
+  const outcomes = [
+    outcomeCount("timeout", "succeeded") ? "User timed out" : null,
+    outcomeCount("timeout", "intended") ? "Would time out user" : null,
+    outcomeCount("timeout", "failed") ? "Timeout failed" : null,
+    outcomeCount("timeout-reversal", "succeeded")
+      ? "User timeout reversed"
+      : null,
+    outcomeCount("timeout-reversal", "failed")
+      ? "Timeout reversal failed"
+      : null,
+    describeMessages(outcomeCount("delete", "succeeded"), "Deleted"),
+    describeMessages(outcomeCount("delete", "intended"), "Would delete"),
+    describeMessages(outcomeCount("delete", "failed"), "Failed to delete"),
+  ]
+    .filter((outcome) => outcome !== null)
     .join(", ");
-  const removed = incident.actionOutcomes.filter(
-    (outcome) =>
-      outcome.status === "succeeded" && outcome.action.includes("delete"),
-  ).length;
   const messageStatus = (messageId: string): string => {
     const outcomes = incident.actionOutcomes.filter(
       (outcome) =>
@@ -217,7 +238,7 @@ export function incidentNotification(
               `**Signals**\n${signals || "None"}`,
               `**Desired actions**\n${incident.intendedActions.join(", ") || "None"}`,
               `**Outcomes**\n${outcomes || "None"}`,
-              `**Removed:** ${removed} · **Latency:** ${incident.latencyMs}ms`,
+              `**Latency:** ${incident.latencyMs}ms`,
               `-# Incident ID · ${incident.messageId}`,
             ].join("\n"),
           ),
