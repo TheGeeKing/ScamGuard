@@ -124,6 +124,8 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
   without connecting it to fast-path moderation.
 - Exposed the approved analysis admission, fairness, and timeout limits through
   environment variables and the production-like Compose workflow.
+- Added quality-filtered perceptual matching with safe-reference precedence,
+  distinct-source identity, and the approved non-linear proposed confidence.
 
 ## Next
 
