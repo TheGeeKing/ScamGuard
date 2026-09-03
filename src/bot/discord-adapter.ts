@@ -18,6 +18,7 @@ import {
   type ImageSource,
   selectDiscordImageSources,
 } from "../images/discord-images";
+import { writeLog } from "../logging";
 import type { StoredGuildSettings } from "../storage/guild-settings";
 import type { IncidentRepository } from "../storage/incidents";
 import { type AdminCommand, handleAdminCommand } from "./admin-commands";
@@ -275,6 +276,34 @@ export async function announceModerationLogChannel(port: {
   }
 }
 
+export const unknownGuildApiCode = 10004;
+
+export function isUnknownGuildError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === unknownGuildApiCode
+  );
+}
+
+export async function prepareConfiguredGuild<TGuild extends { id: string }>(options: {
+  guildId: string;
+  fetchGuild(guildId: string): Promise<TGuild>;
+  registerCommands(guild: TGuild): Promise<void>;
+  onboard(guild: TGuild): Promise<void>;
+}): Promise<"prepared" | "unknown-guild"> {
+  try {
+    const guild = await options.fetchGuild(options.guildId);
+    await options.registerCommands(guild);
+    await options.onboard(guild);
+    return "prepared";
+  } catch (error) {
+    if (isUnknownGuildError(error)) return "unknown-guild";
+    throw error;
+  }
+}
+
 export async function runOnboarding(
   port: OnboardingPort,
 ): Promise<
@@ -398,36 +427,46 @@ export function createDiscordBot(options: {
   const incidentAlertLocks = new Map<string, Promise<void>>();
 
   client.once("clientReady", async () => {
-    const guild = await client.guilds.fetch(options.guildId);
-    await guild.commands.set(
-      applicationCommands.map((command) => command.toJSON()),
-    );
     const instructions =
       "ScamGuard is installed. Run `/scam status`, then configure a moderation log channel and choose a mode.";
-    await runOnboarding({
-      isComplete: () => options.settings.isOnboardingComplete(guild.id),
-      sendPublicUpdatesChannel: async () => {
-        const channel = guild.publicUpdatesChannel;
-        if (!channel?.isSendable()) return false;
-        try {
-          await channel.send(instructions);
-          return true;
-        } catch {
-          return false;
-        }
+    const result = await prepareConfiguredGuild({
+      guildId: options.guildId,
+      fetchGuild: (guildId) => client.guilds.fetch(guildId),
+      registerCommands: async (guild) => {
+        await guild.commands.set(
+          applicationCommands.map((command) => command.toJSON()),
+        );
       },
-      sendOwnerDm: async () => {
-        try {
-          const owner = await guild.fetchOwner();
-          await owner.send(instructions);
-          return true;
-        } catch {
-          return false;
-        }
+      onboard: async (guild) => {
+        await runOnboarding({
+          isComplete: () => options.settings.isOnboardingComplete(guild.id),
+          sendPublicUpdatesChannel: async () => {
+            const channel = guild.publicUpdatesChannel;
+            if (!channel?.isSendable()) return false;
+            try {
+              await channel.send(instructions);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          sendOwnerDm: async () => {
+            try {
+              const owner = await guild.fetchOwner();
+              await owner.send(instructions);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          markComplete: () =>
+            options.settings.completeOnboarding(guild.id, new Date()),
+        });
       },
-      markComplete: () =>
-        options.settings.completeOnboarding(guild.id, new Date()),
     });
+    if (result === "unknown-guild") {
+      writeLog("error", "discord.unknown-guild", { guildId: options.guildId });
+    }
   });
 
   client.on("interactionCreate", async (interaction) => {

@@ -7,6 +7,7 @@ import {
   mergeIncidentNotifications,
   moderationLogChannelNotice,
   parseIncidentButton,
+  prepareConfiguredGuild,
   runOnboarding,
   shouldAssessMessage,
 } from "../src/bot/discord-adapter";
@@ -179,6 +180,40 @@ describe("Discord adapter", () => {
     expect(
       shouldAssessMessage({ ...base, memberRoleIds: ["trusted"] }, scope),
     ).toBe(false);
+  });
+
+  test("does not crash ready setup when the configured guild is unknown to the bot", async () => {
+    const error = Object.assign(new Error("Unknown Guild"), {
+      code: 10004,
+      status: 404,
+    });
+    const registered: string[] = [];
+    await expect(
+      prepareConfiguredGuild({
+        guildId: "358188946733400064",
+        fetchGuild: async () => {
+          throw error;
+        },
+        registerCommands: async (guild) => {
+          registered.push(guild.id);
+        },
+        onboard: async () => {},
+      }),
+    ).resolves.toBe("unknown-guild");
+    expect(registered).toEqual([]);
+  });
+
+  test("still raises non-unknown guild fetch failures during ready setup", async () => {
+    await expect(
+      prepareConfiguredGuild({
+        guildId: "guild-1",
+        fetchGuild: async () => {
+          throw Object.assign(new Error("503"), { code: 0, status: 503 });
+        },
+        registerCommands: async () => {},
+        onboard: async () => {},
+      }),
+    ).rejects.toMatchObject({ status: 503 });
   });
 
   test("sends first-run instructions once using community updates then owner DM", async () => {
