@@ -9,6 +9,7 @@ import {
   type Message,
   type MessageCreateOptions,
   MessageFlags,
+  Partials,
   PermissionFlagsBits,
   TextDisplayBuilder,
 } from "discord.js";
@@ -78,6 +79,30 @@ function messageImageSources(message: Message): ImageSource[] {
   });
 }
 
+export function toScamGuardMessageEvent(
+  message: Message,
+  isEdit = false,
+): Extract<ScamGuardEvent, { kind: "message" }> {
+  const imageSources = messageImageSources(message);
+  return {
+    kind: "message",
+    guildId: message.guildId as string,
+    messageId: message.id,
+    userId: message.author.id,
+    channelId: message.channelId,
+    content: message.content,
+    isEdit,
+    imageCount: imageSources.length,
+    imageSources,
+    imageDigests: [],
+    accountCreatedAt: message.author.createdAt,
+    guildJoinedAt: message.member?.joinedAt ?? null,
+    isWebhook: message.webhookId !== null,
+    imageEvidence: [],
+    signals: [],
+  };
+}
+
 type OnboardingPort = {
   isComplete(): Promise<boolean>;
   sendPublicUpdatesChannel(): Promise<boolean>;
@@ -117,55 +142,15 @@ type IncidentNotification = Pick<
   | "actionOutcomes"
   | "latencyMs"
   | "userId"
+  | "textEvidence"
 >;
 
-type IncidentAlert = IncidentNotification & {
-  messages: { channelId: string | null; messageId: string }[];
-};
-
-export function mergeIncidentNotifications(
-  current: IncidentAlert | undefined,
-  next: IncidentNotification,
-): IncidentAlert {
-  const messages = [
-    ...(current?.messages ?? []),
-    { channelId: next.channelId, messageId: next.messageId },
-  ].filter(
-    (message, index, all) =>
-      all.findIndex(
-        (candidate) => candidate.messageId === message.messageId,
-      ) === index,
-  );
-  if (!current) return { ...next, messages };
-  const signals = [...current.signals, ...next.signals].filter(
-    (signal, index, all) =>
-      all.findIndex((candidate) => candidate.key === signal.key) === index,
-  );
-  const rank = { allow: 0, suspicious: 1, delete: 2, timeout: 3 } as const;
-  return {
-    ...current,
-    score: Math.max(current.score, next.score),
-    intention:
-      rank[next.intention] > rank[current.intention]
-        ? next.intention
-        : current.intention,
-    signals,
-    intendedActions: [
-      ...new Set([...current.intendedActions, ...next.intendedActions]),
-    ],
-    actionOutcomes: [...current.actionOutcomes, ...next.actionOutcomes],
-    latencyMs: Math.max(current.latencyMs, next.latencyMs),
-    messages,
-  };
-}
-
 export function incidentNotification(
-  incident: IncidentNotification | IncidentAlert,
+  incident: IncidentNotification,
 ): MessageCreateOptions & { components: ContainerBuilder[] } {
-  const messages =
-    "messages" in incident
-      ? incident.messages
-      : [{ channelId: incident.channelId, messageId: incident.messageId }];
+  const messages = [
+    { channelId: incident.channelId, messageId: incident.messageId },
+  ];
   const signals = incident.signals
     .map((signal) =>
       signal.weight === 0
@@ -223,6 +208,16 @@ export function incidentNotification(
     );
   if (messages.length > visibleMessages.length)
     visibleMessages.push(`- ${messages.length - visibleMessages.length} more`);
+  const textEvidence = incident.textEvidence
+    ? [
+        `**Matched Text rules**\n${incident.textEvidence.rules
+          .map((rule) => `${rule.name} (\`${rule.id}\`)`)
+          .join(", ")}`,
+        `\`\`\`text\n${incident.textEvidence.content
+          .slice(0, 1_200)
+          .replace(/```/g, "``\u200b`")}\n\`\`\``,
+      ]
+    : [];
   return {
     flags: MessageFlags.IsComponentsV2,
     allowedMentions: { users: [incident.userId] },
@@ -237,6 +232,7 @@ export function incidentNotification(
               `### Score: ${incident.score} · ${incident.intention}`,
               `**Messages**\n${visibleMessages.join("\n")}`,
               `**Signals**\n${signals || "None"}`,
+              ...textEvidence,
               `**Desired actions**\n${incident.intendedActions.join(", ") || "None"}`,
               `**Outcomes**\n${outcomes || "None"}`,
               `**Latency:** ${incident.latencyMs}ms`,
@@ -287,7 +283,9 @@ export function isUnknownGuildError(error: unknown): boolean {
   );
 }
 
-export async function prepareConfiguredGuild<TGuild extends { id: string }>(options: {
+export async function prepareConfiguredGuild<
+  TGuild extends { id: string },
+>(options: {
   guildId: string;
   fetchGuild(guildId: string): Promise<TGuild>;
   registerCommands(guild: TGuild): Promise<void>;
@@ -399,7 +397,13 @@ export function createDiscordBot(options: {
   token: string;
   guildId: string;
   settings: StoredGuildSettings;
-  incidents: Pick<IncidentRepository, "markFalsePositive">;
+  incidents: Pick<
+    IncidentRepository,
+    | "find"
+    | "findNotificationMessageId"
+    | "markFalsePositive"
+    | "setNotificationMessageId"
+  >;
   databaseAvailable(): boolean;
   onEligibleMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
@@ -419,11 +423,10 @@ export function createDiscordBot(options: {
     moderatorId: string;
   }): Promise<string>;
 }): DiscordBot {
-  const client = new Client({ intents: discordGatewayIntents });
-  const incidentAlerts = new Map<
-    string,
-    { incident: IncidentAlert; message: Message; updatedAt: number }
-  >();
+  const client = new Client({
+    intents: discordGatewayIntents,
+    partials: [Partials.Channel, Partials.Message],
+  });
   const incidentAlertLocks = new Map<string, Promise<void>>();
 
   client.once("clientReady", async () => {
@@ -579,7 +582,7 @@ export function createDiscordBot(options: {
     }
   });
 
-  client.on("messageCreate", async (message) => {
+  const handleMessage = async (message: Message, isEdit = false) => {
     const settings = await options.settings.get(options.guildId);
     if (
       shouldAssessMessage(
@@ -600,30 +603,28 @@ export function createDiscordBot(options: {
         },
       )
     ) {
-      const imageSources = messageImageSources(message);
-      await options.onEligibleMessage?.({
-        kind: "message",
-        guildId: message.guildId as string,
-        messageId: message.id,
-        userId: message.author.id,
-        channelId: message.channelId,
-        imageCount: imageSources.length,
-        imageSources,
-        imageDigests: [],
-        accountCreatedAt: message.author.createdAt,
-        guildJoinedAt: message.member?.joinedAt ?? null,
-        isWebhook: message.webhookId !== null,
-        imageEvidence: [],
-        signals: [],
-      });
+      await options.onEligibleMessage?.(
+        toScamGuardMessageEvent(message, isEdit),
+      );
     }
+  };
+
+  client.on("messageCreate", async (message) => {
+    await handleMessage(message);
+  });
+
+  client.on("messageUpdate", async (_previous, message) => {
+    await handleMessage(
+      message.partial ? await message.fetch() : message,
+      true,
+    );
   });
 
   return {
     start: () => client.login(options.token).then(() => undefined),
     isConnected: () => client.isReady(),
     notify: async (incident) => {
-      const key = `${incident.guildId}:${incident.userId}`;
+      const key = `${incident.guildId}:${incident.messageId}`;
       const pending = (incidentAlertLocks.get(key) ?? Promise.resolve())
         .catch(() => undefined)
         .then(async () => {
@@ -632,27 +633,39 @@ export function createDiscordBot(options: {
           const channel = await client.channels.fetch(
             settings.moderationLogChannelId,
           );
-          if (!channel?.isSendable()) return;
-          const existing = incidentAlerts.get(key);
-          const current =
-            existing && Date.now() - existing.updatedAt < 5 * 60 * 1000
-              ? existing
-              : undefined;
-          const merged = mergeIncidentNotifications(
-            current?.incident,
-            incident,
+          if (!channel?.isSendable() || !("messages" in channel)) return;
+          const durable = await options.incidents.find(
+            incident.guildId,
+            incident.messageId,
           );
-          const notification = incidentNotification(merged);
-          const message = current
-            ? await current.message.edit({
-                components: notification.components,
-              })
-            : await channel.send(notification);
-          incidentAlerts.set(key, {
-            incident: merged,
-            message,
-            updatedAt: Date.now(),
+          const notification = incidentNotification({
+            ...(durable ?? incident),
+            textEvidence: incident.textEvidence,
           });
+          const notificationMessageId =
+            await options.incidents.findNotificationMessageId(
+              incident.guildId,
+              incident.messageId,
+            );
+          let message: Message | undefined;
+          if (notificationMessageId) {
+            try {
+              const existing = await channel.messages.fetch(
+                notificationMessageId,
+              );
+              message = await existing.edit({
+                components: notification.components,
+              });
+            } catch {
+              message = undefined;
+            }
+          }
+          message ??= await channel.send(notification);
+          await options.incidents.setNotificationMessageId(
+            incident.guildId,
+            incident.messageId,
+            message.id,
+          );
         });
       incidentAlertLocks.set(key, pending);
       try {

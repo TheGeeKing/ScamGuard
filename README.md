@@ -1,6 +1,6 @@
 # ScamGuard
 
-ScamGuard is a lightweight, self-hosted Discord bot that detects image-based scam floods using explainable behavior Signals and exact SHA-256 image fingerprints. It runs as one Bun/TypeScript process with SQLite; Python, Redis, workers, and hosted AI services are not required.
+ScamGuard is a lightweight, self-hosted Discord bot that detects scam messages using explainable text and behavior Signals plus exact SHA-256 image fingerprints. It runs as one Bun/TypeScript process with SQLite; Python, Redis, workers, and hosted AI services are not required.
 
 ## Quick start
 
@@ -36,6 +36,8 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 
 See [ScamGuard scoring](docs/scoring.md) for every Signal bucket, its weight,
 and how the configurable decision thresholds affect alerts and enforcement.
+The version-controlled [Text rules](docs/text-rules.md) document the scam
+phrases assessed on new and edited messages.
 
 `/scam` provides `status`, `mode`, `thresholds`, `timeout`, `retention`, `log-channel`, `ignore-channel`, `trusted-role`, and `false-positive`. Successful setting changes are visible in-channel; status and errors are ephemeral. Moderators can also use **Mark as scam** and **Mark as safe** from a message context menu.
 

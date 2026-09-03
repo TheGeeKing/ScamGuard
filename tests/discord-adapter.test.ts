@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { GatewayIntentBits } from "discord.js";
+import { GatewayIntentBits, type Message } from "discord.js";
 import {
   announceModerationLogChannel,
   discordGatewayIntents,
   incidentNotification,
-  mergeIncidentNotifications,
   moderationLogChannelNotice,
   parseIncidentButton,
   prepareConfiguredGuild,
   runOnboarding,
   shouldAssessMessage,
+  toScamGuardMessageEvent,
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
@@ -31,6 +31,10 @@ describe("Discord adapter", () => {
       intendedActions: ["timeout", "delete"],
       actionOutcomes: [],
       latencyMs: 143,
+      textEvidence: {
+        content: "Hey @everyone ```danger```",
+        rules: [{ id: "hey-babe", name: "Hey babe" }],
+      },
     };
     const notification = incidentNotification(incident);
     expect(notification).toMatchObject({
@@ -45,6 +49,8 @@ describe("Discord adapter", () => {
     expect(JSON.stringify(container)).toContain("<@user-1>");
     expect(JSON.stringify(container)).not.toContain("<#channel-1>");
     expect(JSON.stringify(container)).toContain("known-sha:abcdef0…");
+    expect(JSON.stringify(container)).toContain("Hey babe (`hey-babe`)");
+    expect(JSON.stringify(container)).toContain("Hey @everyone ``​`danger``​`");
     expect(JSON.stringify(container)).not.toContain(
       "abcdef0123456789".repeat(4),
     );
@@ -59,65 +65,6 @@ describe("Discord adapter", () => {
       action: "safe",
       messageId: "123456789",
     });
-  });
-
-  test("merges a user's messages and signals into one evolving Incident alert", () => {
-    const first = mergeIncidentNotifications(undefined, {
-      guildId: "guild-1",
-      channelId: "channel-a",
-      messageId: "message-a",
-      userId: "user-1",
-      score: 100,
-      intention: "timeout",
-      signals: [{ key: "known", group: "fingerprint", weight: 100 }],
-      intendedActions: ["timeout", "delete"],
-      actionOutcomes: [
-        { action: "timeout", targetId: "user-1", status: "succeeded" },
-      ],
-      latencyMs: 400,
-    });
-    const merged = mergeIncidentNotifications(first, {
-      ...first,
-      channelId: "channel-b",
-      messageId: "message-b",
-      signals: [
-        { key: "known", group: "fingerprint", weight: 100 },
-        { key: "spread", group: "channel-spread", weight: 30 },
-      ],
-      actionOutcomes: [
-        { action: "delete", targetId: "message-b", status: "succeeded" },
-      ],
-    });
-    expect(merged.messages).toEqual([
-      { channelId: "channel-a", messageId: "message-a" },
-      { channelId: "channel-b", messageId: "message-b" },
-    ]);
-    expect(merged.signals.map((signal) => signal.key)).toEqual([
-      "known",
-      "spread",
-    ]);
-    const rendered = JSON.stringify(
-      incidentNotification(merged).components[0]?.toJSON(),
-    );
-    expect(rendered).toContain(
-      "Observed · https://discord.com/channels/guild-1/channel-a/message-a",
-    );
-    expect(rendered).toContain(
-      "Deleted · https://discord.com/channels/guild-1/channel-b/message-b",
-    );
-    const twoDeleted = incidentNotification({
-      ...merged,
-      actionOutcomes: [
-        { action: "delete", targetId: "message-b", status: "succeeded" },
-        { action: "delete", targetId: "message-a", status: "succeeded" },
-      ],
-    });
-    const twoDeletedRendered = JSON.stringify(
-      twoDeleted.components[0]?.toJSON(),
-    );
-    expect(twoDeletedRendered).toContain("**Outcomes**\\nDeleted 2 messages");
-    expect(twoDeletedRendered).not.toContain("delete succeeded");
-    expect(twoDeletedRendered).not.toContain("**Removed:**");
   });
 
   test("shows observation-only similarity as a simple signal", () => {
@@ -182,6 +129,33 @@ describe("Discord adapter", () => {
     ).toBe(false);
   });
 
+  test("maps authored reply and webhook text without referenced-message content", () => {
+    const event = toScamGuardMessageEvent(
+      {
+        guildId: "guild-1",
+        channelId: "channel-1",
+        id: "message-1",
+        content: "My authored reply",
+        author: { id: "webhook-1", createdAt: new Date(0) },
+        member: null,
+        webhookId: "hook-1",
+        attachments: { map: () => [] },
+        embeds: [],
+        reference: { messageId: "referenced-message" },
+      } as unknown as Message,
+      true,
+    );
+
+    expect(event).toMatchObject({
+      kind: "message",
+      messageId: "message-1",
+      content: "My authored reply",
+      isWebhook: true,
+      isEdit: true,
+    });
+    expect(JSON.stringify(event)).not.toContain("referenced-message");
+  });
+
   test("does not crash ready setup when the configured guild is unknown to the bot", async () => {
     const error = Object.assign(new Error("Unknown Guild"), {
       code: 10004,
@@ -189,7 +163,7 @@ describe("Discord adapter", () => {
     });
     const registered: string[] = [];
     await expect(
-      prepareConfiguredGuild({
+      prepareConfiguredGuild<{ id: string }>({
         guildId: "358188946733400064",
         fetchGuild: async () => {
           throw error;
