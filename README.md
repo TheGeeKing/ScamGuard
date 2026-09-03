@@ -68,6 +68,6 @@ ScamGuard handles SIGINT/SIGTERM by stopping Discord intake, draining bounded in
 
 ## Initial-release exclusions
 
-The first release has no OCR, perceptual hashing, QR decoding, custom ML/AI classification, central reputation service, multi-guild runtime, or automatic global sharing. External image failures remain non-scoring diagnostics. Runtime image bytes are never persisted locally.
+The first release has no OCR, QR decoding, custom ML/AI classification, central reputation service, multi-guild runtime, or automatic global sharing. External image failures remain non-scoring diagnostics. Runtime image bytes are never persisted locally.
 
 See [Discord setup and the manual smoke test](docs/discord-setup.md) before enabling enforcement.
