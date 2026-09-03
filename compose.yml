@@ -1,6 +1,7 @@
 services:
   scamguard:
     build: .
+    pull_policy: build
     init: true
     read_only: true
     restart: unless-stopped
