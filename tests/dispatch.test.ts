@@ -113,6 +113,7 @@ describe("ScamGuard dispatch", () => {
   });
 
   test("maps overridden thresholds to allow, delete, and timeout intentions", async () => {
+    const incidents: IncidentRecord[] = [];
     const app = createScamGuard({
       now: () => new Date(0),
       getSettings: async () => ({
@@ -121,7 +122,7 @@ describe("ScamGuard dispatch", () => {
         deleteScore: 40,
         timeoutScore: 60,
       }),
-      saveIncident: async () => {},
+      saveIncident: async (incident) => incidents.push(incident),
       notify: async () => {},
     });
 
@@ -135,8 +136,16 @@ describe("ScamGuard dispatch", () => {
         signals: [{ key: id, group: id, weight }],
       });
     expect((await assess("allow", 10)).assessment?.intention).toBe("allow");
+    expect((await assess("suspicious", 20)).assessment?.intention).toBe(
+      "suspicious",
+    );
     expect((await assess("delete", 40)).assessment?.intention).toBe("delete");
     expect((await assess("timeout", 60)).assessment?.intention).toBe("timeout");
+    expect(incidents.map((incident) => incident.messageId)).toEqual([
+      "suspicious",
+      "delete",
+      "timeout",
+    ]);
   });
 
   test("persists and reports enforcement outcomes", async () => {
@@ -297,13 +306,19 @@ describe("ScamGuard dispatch", () => {
     expect(incidents).toHaveLength(1);
   });
 
-  test("keeps a late score-60 perceptual match alert-only", async () => {
+  test("keeps a late score-60 perceptual match diagnostic-only", async () => {
     let enforcementCalls = 0;
+    let incidentSaves = 0;
+    let notifications = 0;
     const app = createScamGuard({
       now: () => new Date(0),
       getSettings: async () => ({ ...settings, moderationMode: "enforce" }),
-      saveIncident: async () => {},
-      notify: async () => {},
+      saveIncident: async () => {
+        incidentSaves += 1;
+      },
+      notify: async () => {
+        notifications += 1;
+      },
       enforce: async () => {
         enforcementCalls += 1;
         return [];
@@ -331,5 +346,7 @@ describe("ScamGuard dispatch", () => {
     expect(outcome.assessment?.score).toBe(0);
     expect(outcome.assessment?.intention).toBe("allow");
     expect(enforcementCalls).toBe(1);
+    expect(incidentSaves).toBe(0);
+    expect(notifications).toBe(0);
   });
 });

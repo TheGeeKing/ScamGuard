@@ -221,7 +221,7 @@ export function createScamGuard(ports: Ports): {
           recent.set(identity, assessment);
           const actionOutcomes =
             (await ports.enforce?.(assessment, settings)) ?? [];
-          if (score >= 50)
+          if (score >= settings.suspiciousScore)
             await persist(identity, assessment, settings, actionOutcomes);
           if (current.messageId === event.messageId) selected = assessment;
         }
@@ -274,7 +274,8 @@ export function createScamGuard(ports: Ports): {
         const actionOutcomes = enforcePerceptual
           ? ((await ports.enforce?.(assessment, settings)) ?? [])
           : [];
-        await persist(identity, assessment, settings, actionOutcomes, true);
+        if (score >= settings.suspiciousScore)
+          await persist(identity, assessment, settings, actionOutcomes, true);
         return {
           kind: "assessed",
           assessment,
@@ -317,7 +318,7 @@ export function createScamGuard(ports: Ports): {
       recent.set(identity, assessment);
       const actionOutcomes =
         (await ports.enforce?.(assessment, settings)) ?? [];
-      if (score >= 50)
+      if (score >= settings.suspiciousScore)
         await persist(identity, assessment, settings, actionOutcomes);
 
       return {
