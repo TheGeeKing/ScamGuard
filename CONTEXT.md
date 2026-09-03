@@ -1,16 +1,20 @@
 # ScamGuard
 
-ScamGuard detects image-based scam floods in Discord servers and records why each moderation decision was reached.
+ScamGuard detects scam messages in Discord servers and records why each moderation decision was reached.
 
 ## Language
 
 **Assessment**:
-The complete, explainable evaluation of one Discord message and its author, including evidence from every eligible attachment on that message.
+The complete, explainable evaluation of one Discord message and its author, including eligible text and attachment evidence.
 _Avoid_: Scan, verdict
 
 **Signal**:
 A named, weighted piece of evidence in an Assessment. A Signal is idempotent: the same key contributes at most once.
 _Avoid_: Score increment, point addition
+
+**Text rule**:
+A named scam-phrase pattern with a stable ID that can produce a Signal when eligible message text matches it.
+_Avoid_: AutoMod rule, text filter
 
 **Fast path**:
 The deterministic processing route that can reach a moderation decision without optional services or decoded-image analysis.
