@@ -48,14 +48,14 @@ Tickets 01–10 complete; benchmarking perceptual and crop-resistant hashing bef
 - Plan community reporting as a later, explicit opt-in feature rather than part of the first release.
 - A Community report may contain flagged image bytes, hashes, Signals, timestamp, pseudonymous installation ID, and flagged Discord user ID.
 - Treat cross-server user reputation as a weak, expiring Signal that can never enforce by itself.
-- Promote Community reports into a signed Global fingerprint feed only after manual review; consuming installations opt in and retain local disable/override controls.
+- In a future multi-guild deployment, allow manually reviewed Community reports to populate a Shared fingerprint corpus for opted-in guilds on that instance; do not synchronize corpora between separately operated instances.
+- Let each guild's local safe fingerprints override the Shared fingerprint corpus.
 - Register all eligible images from a moderator-marked scam message, including low-variation or apparently harmless campaign panels.
 - Keep moderator-added fingerprints scoped to the configured server initially.
 - Enforce in this order: local block, timeout attempt, triggering-message deletion, Cleanup-window deletion, outcome persistence, moderator notification.
 - Serialize enforcement per user so concurrent messages produce one timeout attempt.
 - Continue deletion and cleanup when a timeout fails, recording each action outcome separately.
 - Continue processing remaining attachments when one fails; processing diagnostics are explainable but non-scoring.
-- Let local safe overrides take precedence over the future Global fingerprint feed.
 - Gate implementation commits with `bun test`, TypeScript type-checking, Biome formatting/linting, and the smallest relevant smoke check.
 - Deduplicate message processing by `(guild_id, message_id)` and keep Signals and moderation actions idempotent.
 - Register application commands only in the configured `GUILD_ID` for v1.

@@ -82,8 +82,8 @@ Administrators configure the bot through Discord commands, review explainable In
 66. As a future community participant, I want Community reporting to be explicit opt-in, so that local detection never silently uploads data.
 67. As a future reviewer, I want Community reports to include flagged images, hashes, Signals, time, installation identity, and flagged Discord user ID, so that reports can be evaluated.
 68. As a future server operator, I want cross-server user reputation to be weak and expiring, so that it can accelerate detection without becoming a global ban.
-69. As a future feed consumer, I want only manually reviewed fingerprints distributed in a signed feed, so that poisoned reports cannot become automatic global policy.
-70. As a future feed consumer, I want local safe overrides to win, so that central data never removes local control.
+69. As a future multi-guild operator, I want manually reviewed fingerprints shared among opted-in guilds on my ScamGuard instance, without synchronizing data with separately operated instances.
+70. As a server operator, I want my guild's safe fingerprints to override the Shared fingerprint corpus, so that shared data never removes local control.
 71. As a maintainer, I want to commit non-private candidate Evidence samples for peer review, so that general scam fingerprints have visible provenance.
 72. As an operator, I want only approved Evidence samples to seed detection, so that pending review cannot change moderation behavior.
 
@@ -141,7 +141,7 @@ Administrators configure the bot through Discord commands, review explainable In
 - Valkey, a separate analysis worker, and durable rolling windows
 - Prometheus metrics and detector benchmark tooling
 - Multi-server operation and per-server command registration
-- Community report transport, central review infrastructure, cross-server reputation, and signed global feeds
+- Community report transport, central review infrastructure, cross-server reputation, and the per-instance Shared fingerprint corpus
 - Automatic bans, automatic permanent fingerprint learning, and automatic timeout reversal
 - Fetching ordinary URLs found in message text or future QR/OCR output
 - Video, PDF, and document analysis

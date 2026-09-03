@@ -66,8 +66,14 @@ Before upgrading, take a backup. Then update the checkout and run `docker compos
 
 ScamGuard handles SIGINT/SIGTERM by stopping Discord intake, draining bounded in-flight work for up to 10 seconds, and closing SQLite. Compose allows a 15-second grace period.
 
-## Initial-release exclusions
+## Future features
 
-The first release has no OCR, QR decoding, custom ML/AI classification, central reputation service, multi-guild runtime, or automatic global sharing. External image failures remain non-scoring diagnostics. Runtime image bytes are never persisted locally.
+- `/scam stats` for useful moderator-facing Incident statistics
+- Multi-guild operation from one ScamGuard process
+- A centrally reviewed fingerprint corpus shared by guilds on that process, without synchronization between separately operated ScamGuard instances
+
+## Current exclusions
+
+ScamGuard has no OCR, QR decoding, custom ML/AI classification, or central reputation service. External image failures remain non-scoring diagnostics. Runtime image bytes are never persisted locally.
 
 See [Discord setup and the manual smoke test](docs/discord-setup.md) before enabling enforcement.

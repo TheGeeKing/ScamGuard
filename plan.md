@@ -2699,7 +2699,7 @@ Do not implement these until the core detector has real-world validation:
 * Ollama/VLM enrichment
 * Valkey and a separate analysis worker
 * Prometheus metrics and image benchmark tooling
-* opt-in Community reports, Global reputation signals and the signed Global fingerprint feed
+* opt-in Community reports, Global reputation signals and a per-instance Shared fingerprint corpus for multi-guild deployments
 
 Build the fast, deterministic anti-spam/image-fingerprinting system first.
 

@@ -48,9 +48,9 @@ _Avoid_: Automatic global ban, telemetry
 Weak, expiring evidence that a Discord user ID was recently associated with similar scam behavior in another opted-in server.
 _Avoid_: Global blacklist, ban list
 
-**Global fingerprint feed**:
-A future collection of centrally reviewed scam fingerprints that opted-in ScamGuard installations may consume.
-_Avoid_: Automatic learning, raw report stream
+**Shared fingerprint corpus**:
+A centrally reviewed collection of scam fingerprints available to every opted-in guild served by the same multi-guild ScamGuard instance. Separately operated instances do not synchronize their corpora.
+_Avoid_: Global feed, federated threat feed, instance synchronization
 
 **Image source**:
 An image attachment or rendered embed selected for fingerprinting, preferring Discord CDN/proxy bytes and falling back to a guarded external origin only when no safe Discord proxy exists.
