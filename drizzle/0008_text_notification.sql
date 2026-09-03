@@ -1,0 +1,1 @@
+ALTER TABLE `incidents` ADD `notification_message_id` text;

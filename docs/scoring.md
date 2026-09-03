@@ -20,6 +20,7 @@ group contributes to the total.
 | `known-fingerprint` | `hot-sha:<digest>` | Exact match for a temporary fingerprint from a recent enforced campaign | 90 |
 | `known-fingerprint` | `known-sha:<digest>` | Exact match for a moderator-confirmed or curated scam fingerprint | 100 |
 | `perceptual-observation` | `similar-image` | High-confidence perceptual match with a proposed score of 85 or 100 | 85 or 100 |
+| `scam-message-text` | `text-rule:<rule-id>` | Message content matches a configured [Text rule](text-rules.md) | 100 |
 
 For example, reaching both channel-spread conditions contributes 50, not
 30 + 50. A Known scam fingerprint similarly replaces a Hot fingerprint in

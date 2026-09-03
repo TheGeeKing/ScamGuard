@@ -1,6 +1,7 @@
 import type { EffectiveGuildSettings } from "../bot/admin-commands";
 import type { ImageSource } from "../images/discord-images";
 import type { PerceptualMatch } from "../perceptual/matcher";
+import { matchTextRules, type TextRuleMatch } from "../text/rules";
 import type { ActionOutcome } from "./enforcement";
 
 export type Signal = {
@@ -23,6 +24,11 @@ export type ImageEvidence = {
 
 export type Intention = "allow" | "suspicious" | "delete" | "timeout";
 
+export type TextEvidence = {
+  content: string;
+  rules: TextRuleMatch[];
+};
+
 export type Assessment = {
   guildId: string;
   channelId: string | null;
@@ -32,6 +38,7 @@ export type Assessment = {
   createdAt: Date;
   latencyMs: number;
   imageEvidence: ImageEvidence[];
+  textEvidence?: TextEvidence;
   signals: Signal[];
   score: number;
   intention: Intention;
@@ -53,6 +60,8 @@ export type ScamGuardEvent =
       messageId: string;
       userId: string;
       channelId?: string;
+      content?: string;
+      isEdit?: boolean;
       imageCount?: number;
       imageSources?: ImageSource[];
       imageDigests?: string[];
@@ -90,6 +99,10 @@ type Ports = {
   now(): Date;
   getSettings(guildId: string): Promise<EffectiveGuildSettings>;
   saveIncident(incident: IncidentRecord): Promise<unknown>;
+  findIncident?(
+    guildId: string,
+    messageId: string,
+  ): Promise<IncidentRecord | undefined>;
   notify(incident: IncidentRecord): Promise<unknown>;
   prepareMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
@@ -287,15 +300,32 @@ export function createScamGuard(ports: Ports): {
       if (event.kind !== "message") return { kind: "accepted" };
 
       const identity = `${event.guildId}:${event.messageId}`;
-      if (handledMessages.has(identity)) return { kind: "duplicate" };
+      if (handledMessages.has(identity) && !event.isEdit)
+        return { kind: "duplicate" };
       handledMessages.add(identity);
 
       const startedAt = ports.now();
       const settings = await ports.getSettings(event.guildId);
-      const prepared = await ports.prepareMessage?.(event);
+      const current = event.isEdit
+        ? (recent.get(identity) ??
+          (await ports.findIncident?.(event.guildId, event.messageId)))
+        : undefined;
+      const prepared = current
+        ? undefined
+        : await ports.prepareMessage?.(event);
+      const textRules = matchTextRules(event.content ?? "");
       const signals = activeSignals([
-        ...event.signals,
+        ...(current
+          ? current.signals.filter(
+              (signal) => signal.group !== "scam-message-text",
+            )
+          : event.signals),
         ...(prepared?.signals ?? []),
+        ...textRules.map((rule) => ({
+          key: `text-rule:${rule.id}`,
+          group: "scam-message-text",
+          weight: 100,
+        })),
       ]);
       const score = signals.reduce((total, signal) => total + signal.weight, 0);
       const assessment: Assessment = {
@@ -304,12 +334,15 @@ export function createScamGuard(ports: Ports): {
         messageId: event.messageId,
         userId: event.userId,
         isWebhook: event.isWebhook ?? false,
-        createdAt: ports.now(),
+        createdAt: current?.createdAt ?? ports.now(),
         latencyMs: ports.now().getTime() - startedAt.getTime(),
-        imageEvidence: [
+        imageEvidence: current?.imageEvidence ?? [
           ...event.imageEvidence,
           ...(prepared?.imageEvidence ?? []),
         ],
+        ...(textRules.length > 0
+          ? { textEvidence: { content: event.content ?? "", rules: textRules } }
+          : {}),
         signals,
         score,
         intention: intentionFor(score, settings),
@@ -319,7 +352,13 @@ export function createScamGuard(ports: Ports): {
       const actionOutcomes =
         (await ports.enforce?.(assessment, settings)) ?? [];
       if (score >= settings.suspiciousScore)
-        await persist(identity, assessment, settings, actionOutcomes);
+        await persist(
+          identity,
+          assessment,
+          settings,
+          actionOutcomes,
+          event.isEdit,
+        );
 
       return {
         kind: "assessed",

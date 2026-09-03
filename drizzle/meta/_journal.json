@@ -57,6 +57,13 @@
       "when": 1788352776372,
       "tag": "0007_slow_malcolm_colcord",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788467824932,
+      "tag": "0008_text_notification",
+      "breakpoints": true
     }
   ]
 }

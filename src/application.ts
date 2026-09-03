@@ -262,6 +262,7 @@ export function createApplication(
   const scamGuard = createScamGuard({
     now: () => new Date(),
     getSettings: storage.guildSettings.get,
+    findIncident: storage.incidents.find,
     saveIncident: async (incident) => {
       await storage.incidents.save(incident);
       writeLog("info", "incident.persisted", {

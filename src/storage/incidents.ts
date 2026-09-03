@@ -7,6 +7,15 @@ import { incidents } from "./schema";
 export type IncidentRepository = {
   save(incident: IncidentRecord): Promise<void>;
   find(guildId: string, messageId: string): Promise<IncidentRecord | undefined>;
+  findNotificationMessageId(
+    guildId: string,
+    messageId: string,
+  ): Promise<string | undefined>;
+  setNotificationMessageId(
+    guildId: string,
+    messageId: string,
+    notificationMessageId: string,
+  ): Promise<boolean>;
   markFalsePositive(
     guildId: string,
     messageId: string,
@@ -33,6 +42,7 @@ export function createIncidentRepository(
   return {
     save: async (incident) => {
       const id = `${incident.guildId}:${incident.messageId}`;
+      const { textEvidence: _notificationOnly, ...durableIncident } = incident;
       const existing = await database
         .select({ actionOutcomes: incidents.actionOutcomes })
         .from(incidents)
@@ -46,7 +56,7 @@ export function createIncidentRepository(
         .insert(incidents)
         .values({
           id,
-          ...incident,
+          ...durableIncident,
           actionOutcomes,
         })
         .onConflictDoUpdate({
@@ -97,6 +107,37 @@ export function createIncidentRepository(
             reviewedAt: row.reviewedAt,
           }
         : undefined;
+    },
+    findNotificationMessageId: async (guildId, messageId) => {
+      const row = await database
+        .select({ notificationMessageId: incidents.notificationMessageId })
+        .from(incidents)
+        .where(
+          and(
+            eq(incidents.guildId, guildId),
+            eq(incidents.messageId, messageId),
+          ),
+        )
+        .get();
+      return row?.notificationMessageId ?? undefined;
+    },
+    setNotificationMessageId: async (
+      guildId,
+      messageId,
+      notificationMessageId,
+    ) => {
+      const updated = await database
+        .update(incidents)
+        .set({ notificationMessageId })
+        .where(
+          and(
+            eq(incidents.guildId, guildId),
+            eq(incidents.messageId, messageId),
+          ),
+        )
+        .returning({ messageId: incidents.messageId })
+        .all();
+      return updated.length > 0;
     },
     markFalsePositive: async (guildId, messageId, reviewerId, reviewedAt) => {
       const reviewed = await database

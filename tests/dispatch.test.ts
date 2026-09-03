@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createModerationEnforcer } from "../src/domain/enforcement";
 import { createScamGuard, type IncidentRecord } from "../src/domain/scamguard";
 
 const settings = {
@@ -14,6 +15,107 @@ const settings = {
 };
 
 describe("ScamGuard dispatch", () => {
+  test("turns matching message text into one decisive explainable Signal", async () => {
+    const incidents: IncidentRecord[] = [];
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => settings,
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {},
+    });
+
+    const outcome = await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-text",
+      userId: "user-1",
+      content: "Hey babe, get 50$ for Steam",
+      imageEvidence: [],
+      signals: [],
+    });
+
+    expect(outcome.assessment).toMatchObject({
+      score: 100,
+      intention: "timeout",
+      signals: [
+        {
+          key: "text-rule:cash-for-steam",
+          group: "scam-message-text",
+          weight: 100,
+        },
+      ],
+      textEvidence: {
+        content: "Hey babe, get 50$ for Steam",
+        rules: [
+          { id: "cash-for-steam", name: "Cash for Steam" },
+          { id: "steam-cash", name: "Steam and cash" },
+          { id: "hey-babe", name: "Hey babe" },
+        ],
+      },
+    });
+    expect(incidents).toHaveLength(1);
+  });
+
+  test("applies moderation modes and keeps matching webhooks deletion-only", async () => {
+    const assess = async (
+      moderationMode: "dry-run" | "delete" | "enforce",
+      isWebhook = false,
+    ) => {
+      const enforcer = createModerationEnforcer({
+        timeoutMember: async () => {},
+        deleteMessage: async () => {},
+      });
+      const app = createScamGuard({
+        now: () => new Date(0),
+        getSettings: async () => ({ ...settings, moderationMode }),
+        saveIncident: async () => {},
+        notify: async () => {},
+        enforce: (assessment, effectiveSettings) =>
+          enforcer.enforce({
+            guildId: assessment.guildId,
+            userId: assessment.userId,
+            trigger: {
+              channelId: assessment.channelId as string,
+              messageId: assessment.messageId,
+            },
+            cleanup: [],
+            intention: assessment.intention,
+            moderationMode: effectiveSettings.moderationMode,
+            timeoutMinutes: effectiveSettings.timeoutMinutes,
+            isWebhook: assessment.isWebhook,
+          }),
+      });
+      return app.dispatch({
+        kind: "message",
+        guildId: "guild-1",
+        channelId: "channel-1",
+        messageId: `${moderationMode}-${isWebhook}`,
+        userId: "user-1",
+        content: "hey babe",
+        isWebhook,
+        imageEvidence: [],
+        signals: [],
+      });
+    };
+
+    expect(await assess("dry-run")).toMatchObject({
+      kind: "assessed",
+      appliedActions: ["timeout:intended", "delete:intended"],
+    });
+    expect(await assess("delete")).toMatchObject({
+      kind: "assessed",
+      appliedActions: ["delete:succeeded"],
+    });
+    expect(await assess("enforce")).toMatchObject({
+      kind: "assessed",
+      appliedActions: ["timeout:succeeded", "delete:succeeded"],
+    });
+    expect(await assess("enforce", true)).toMatchObject({
+      kind: "assessed",
+      appliedActions: ["delete:succeeded"],
+    });
+  });
+
   test("creates one explainable Assessment and keeps only the strongest group Signal", async () => {
     const incidents: IncidentRecord[] = [];
     const notifications: string[] = [];
@@ -84,6 +186,89 @@ describe("ScamGuard dispatch", () => {
     expect(preparations).toBe(1);
     now = new Date("2026-09-01T00:05:00Z");
     expect(app.activeAssessmentCount()).toBe(0);
+  });
+
+  test("reassesses edited text without repeating attachment preparation", async () => {
+    let preparations = 0;
+    const incidents: IncidentRecord[] = [];
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => settings,
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {},
+      prepareMessage: async () => {
+        preparations += 1;
+        return { imageEvidence: [], signals: [] };
+      },
+    });
+    const message = {
+      kind: "message" as const,
+      guildId: "guild-1",
+      messageId: "edited-message",
+      userId: "user-1",
+      content: "ordinary message",
+      imageEvidence: [],
+      signals: [],
+    };
+
+    expect((await app.dispatch(message)).assessment?.intention).toBe("allow");
+    const edited = await app.dispatch({
+      ...message,
+      content: "HEY BABE",
+      isEdit: true,
+    });
+
+    expect(edited.assessment).toMatchObject({
+      intention: "timeout",
+      textEvidence: {
+        content: "HEY BABE",
+        rules: [{ id: "hey-babe", name: "Hey babe" }],
+      },
+    });
+    expect(preparations).toBe(1);
+    expect(incidents).toHaveLength(1);
+  });
+
+  test("reuses a durable Incident when an edit arrives after the active window", async () => {
+    let now = new Date(0);
+    let preparations = 0;
+    let incident: IncidentRecord | undefined;
+    const app = createScamGuard({
+      now: () => now,
+      getSettings: async () => settings,
+      saveIncident: async (next) => {
+        incident = next;
+      },
+      findIncident: async () => incident,
+      notify: async () => {},
+      prepareMessage: async () => {
+        preparations += 1;
+        return { imageEvidence: [{ sourceId: "image-1" }], signals: [] };
+      },
+    });
+    const message = {
+      kind: "message" as const,
+      guildId: "guild-1",
+      messageId: "durable-edit",
+      userId: "user-1",
+      content: "hey babe",
+      imageEvidence: [],
+      signals: [],
+    };
+
+    await app.dispatch(message);
+    now = new Date(5 * 60 * 1000);
+    const edited = await app.dispatch({
+      ...message,
+      content: "@here",
+      isEdit: true,
+    });
+
+    expect(edited.assessment?.imageEvidence).toEqual([{ sourceId: "image-1" }]);
+    expect(edited.assessment?.textEvidence?.rules).toEqual([
+      { id: "here-mention", name: "Here mention" },
+    ]);
+    expect(preparations).toBe(1);
   });
 
   test("keeps duplicate keys idempotent and resolves equal group weights stably", async () => {

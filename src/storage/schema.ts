@@ -29,6 +29,7 @@ export const incidents = sqliteTable("incidents", {
   guildId: text("guild_id").notNull(),
   channelId: text("channel_id"),
   messageId: text("message_id").notNull(),
+  notificationMessageId: text("notification_message_id"),
   userId: text("user_id").notNull(),
   isWebhook: integer("is_webhook", { mode: "boolean" })
     .notNull()

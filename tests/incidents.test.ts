@@ -28,6 +28,10 @@ describe("Incident storage", () => {
         createdAt: new Date(0),
         latencyMs: 143,
         imageEvidence: [{ sourceId: "attachment-1", sha256: "hash-1" }],
+        textEvidence: {
+          content: "Hey babe",
+          rules: [{ id: "hey-babe", name: "Hey babe" }],
+        },
         signals: [{ key: "known-sha", group: "fingerprint", weight: 100 }],
         score: 100,
         intention: "timeout",
@@ -56,6 +60,26 @@ describe("Incident storage", () => {
       });
       const stored = await storage.incidents.find("guild-1", "message-1");
       if (!stored) throw new Error("expected stored Incident");
+      expect(stored.textEvidence).toBeUndefined();
+      expect(
+        await storage.incidents.findNotificationMessageId(
+          "guild-1",
+          "message-1",
+        ),
+      ).toBeUndefined();
+      expect(
+        await storage.incidents.setNotificationMessageId(
+          "guild-1",
+          "message-1",
+          "notification-1",
+        ),
+      ).toBe(true);
+      expect(
+        await storage.incidents.findNotificationMessageId(
+          "guild-1",
+          "message-1",
+        ),
+      ).toBe("notification-1");
       await storage.incidents.save({
         ...stored,
         signals: [
