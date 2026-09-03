@@ -306,7 +306,7 @@ describe("ScamGuard dispatch", () => {
     expect(incidents).toHaveLength(1);
   });
 
-  test("keeps a late score-60 perceptual match diagnostic-only", async () => {
+  test("keeps a late score-30 perceptual match below the alert threshold", async () => {
     let enforcementCalls = 0;
     let incidentSaves = 0;
     let notifications = 0;
@@ -339,14 +339,56 @@ describe("ScamGuard dispatch", () => {
       messageId: "message-1",
       sourceId: "image-1",
       latencyMs: 350,
-      proposedScore: 60,
-      matches: [{ sourceSha256: "known", distance: 26, strength: "strong" }],
+      proposedScore: 30,
+      matches: [{ sourceSha256: "known", distance: 40, strength: "weak" }],
     });
 
-    expect(outcome.assessment?.score).toBe(0);
+    expect(outcome.assessment?.score).toBe(30);
     expect(outcome.assessment?.intention).toBe("allow");
     expect(enforcementCalls).toBe(1);
     expect(incidentSaves).toBe(0);
     expect(notifications).toBe(0);
+  });
+
+  test("alerts for a late score-60 perceptual match without enforcement", async () => {
+    const incidents: IncidentRecord[] = [];
+    let notifications = 0;
+    let enforcementCalls = 0;
+    const app = createScamGuard({
+      now: () => new Date(0),
+      getSettings: async () => ({ ...settings, moderationMode: "enforce" }),
+      saveIncident: async (incident) => incidents.push(incident),
+      notify: async () => {
+        notifications += 1;
+      },
+      enforce: async () => {
+        enforcementCalls += 1;
+        return [];
+      },
+    });
+    await app.dispatch({
+      kind: "message",
+      guildId: "guild-1",
+      messageId: "message-1",
+      userId: "user-1",
+      imageEvidence: [{ sourceId: "image-1", sha256: "a" }],
+      signals: [],
+    });
+
+    const outcome = await app.dispatch({
+      kind: "perceptual-observation",
+      guildId: "guild-1",
+      messageId: "message-1",
+      sourceId: "image-1",
+      latencyMs: 350,
+      proposedScore: 60,
+      matches: [{ sourceSha256: "known", distance: 26, strength: "strong" }],
+    });
+
+    expect(outcome.assessment?.score).toBe(60);
+    expect(outcome.assessment?.intention).toBe("suspicious");
+    expect(enforcementCalls).toBe(1);
+    expect(incidents).toHaveLength(1);
+    expect(notifications).toBe(1);
   });
 });

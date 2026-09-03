@@ -33,17 +33,19 @@ once.
 
 | Match evidence | Proposed score | Active score |
 | --- | ---: | ---: |
-| Any weak-only matches | 30 | 0 |
-| One strong match | 60 | 0 |
+| Any weak-only matches | 30 | 30 |
+| One strong match | 60 | 60 |
 | Two strong matches | 85 | 85 |
 | One very-strong match | 85 | 85 |
 | At least 3 strong matches | 100 | 100 |
 | At least 2 very-strong matches | 100 | 100 |
 | At least 1 very-strong and 1 strong match | 100 | 100 |
 
-Proposed scores below 85 remain diagnostic. They do not increase the
-Assessment score or create an Incident by themselves. An equally close or
-closer safe perceptual reference suppresses the match entirely.
+Proposed scores contribute to the Assessment like other Signals. With the
+default thresholds, a score of 30 does not create an Incident by itself, while
+a score of 60 creates a suspicious Incident without taking a moderation action.
+An equally close or closer safe perceptual reference suppresses the match
+entirely.
 
 ## Decision thresholds
 

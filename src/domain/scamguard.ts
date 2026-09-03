@@ -241,7 +241,7 @@ export function createScamGuard(ports: Ports): {
           {
             key: "similar-image",
             group: "perceptual-observation",
-            weight: enforcePerceptual ? event.proposedScore : 0,
+            weight: event.proposedScore,
           },
         ]);
         const score = signals.reduce(
