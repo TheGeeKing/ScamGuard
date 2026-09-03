@@ -117,17 +117,24 @@ function displaySignalKey(key: string): string {
   return key.replace(/^(known|hot)-sha:([a-f\d]{7})[a-f\d]+$/i, "$1-sha:$2…");
 }
 
-function incidentButtons(messageId: string): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+function incidentButtons(
+  messageId: string,
+  hasImages: boolean,
+): ActionRowBuilder<ButtonBuilder> {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`scamguard:incident:false-positive:${messageId}`)
       .setLabel("False positive")
       .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`scamguard:incident:safe:${messageId}`)
-      .setLabel("Mark images safe")
-      .setStyle(ButtonStyle.Success),
   );
+  if (hasImages)
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`scamguard:incident:safe:${messageId}`)
+        .setLabel("Mark images safe")
+        .setStyle(ButtonStyle.Success),
+    );
+  return row;
 }
 
 type IncidentNotification = Pick<
@@ -142,6 +149,7 @@ type IncidentNotification = Pick<
   | "actionOutcomes"
   | "latencyMs"
   | "userId"
+  | "imageEvidence"
   | "textEvidence"
 >;
 
@@ -240,7 +248,12 @@ export function incidentNotification(
             ].join("\n"),
           ),
         )
-        .addActionRowComponents(incidentButtons(incident.messageId)),
+        .addActionRowComponents(
+          incidentButtons(
+            incident.messageId,
+            incident.imageEvidence.length > 0,
+          ),
+        ),
     ],
   };
 }

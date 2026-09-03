@@ -31,6 +31,7 @@ describe("Discord adapter", () => {
       intendedActions: ["timeout", "delete"],
       actionOutcomes: [],
       latencyMs: 143,
+      imageEvidence: [{ sourceId: "image-1" }],
       textEvidence: {
         content: "Hey @everyone ```danger```",
         rules: [{ id: "hey-babe", name: "Hey babe" }],
@@ -67,6 +68,32 @@ describe("Discord adapter", () => {
     });
   });
 
+  test("omits image review actions from text-only Incident notifications", () => {
+    const notification = incidentNotification({
+      guildId: "guild-1",
+      channelId: "channel-1",
+      messageId: "123456789",
+      userId: "user-1",
+      score: 100,
+      intention: "timeout",
+      imageEvidence: [],
+      textEvidence: {
+        content: "hey babe",
+        rules: [{ id: "hey-babe", name: "Hey babe" }],
+      },
+      signals: [
+        { key: "text-rule:hey-babe", group: "scam-message-text", weight: 100 },
+      ],
+      intendedActions: ["timeout", "delete"],
+      actionOutcomes: [],
+      latencyMs: 1,
+    });
+
+    const rendered = JSON.stringify(notification.components[0]?.toJSON());
+    expect(rendered).toContain("False positive");
+    expect(rendered).not.toContain("Mark images safe");
+  });
+
   test("shows observation-only similarity as a simple signal", () => {
     const notification = incidentNotification({
       guildId: "guild-1",
@@ -75,6 +102,7 @@ describe("Discord adapter", () => {
       userId: "user-1",
       score: 0,
       intention: "allow",
+      imageEvidence: [],
       signals: [
         { key: "similar-image", group: "perceptual-observation", weight: 0 },
       ],
