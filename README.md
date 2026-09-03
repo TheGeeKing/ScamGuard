@@ -34,6 +34,9 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 | `PERCEPTUAL_ANALYSIS_TIMEOUT_MS` | `5000` | Worker deadline before replacement/retry |
 | `HEALTH_HOST` / `HEALTH_PORT` | `127.0.0.1` / `3000` | Health listener |
 
+See [ScamGuard scoring](docs/scoring.md) for every Signal bucket, its weight,
+and how the configurable decision thresholds affect alerts and enforcement.
+
 `/scam` provides `status`, `mode`, `thresholds`, `timeout`, `retention`, `log-channel`, `ignore-channel`, `trusted-role`, and `false-positive`. Successful setting changes are visible in-channel; status and errors are ephemeral. Moderators can also use **Mark as scam** and **Mark as safe** from a message context menu.
 
 Incident notifications use a Components V2 layout with **False positive** and **Mark images safe** actions and tag the flagged user.
