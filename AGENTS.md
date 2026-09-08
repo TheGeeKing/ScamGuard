@@ -1,5 +1,11 @@
 ## Agent skills
 
+### Commits
+
+When changing the repository, create atomic conventional commits. Keep each
+commit independently coherent and include relevant tests and documentation in
+the same commit as the behavior they describe.
+
 ### Issue tracker
 
 Issues and specs are tracked as local Markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
