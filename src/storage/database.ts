@@ -17,6 +17,10 @@ import {
   createPerceptualFingerprintRepository,
   type PerceptualFingerprintRepository,
 } from "./perceptual-fingerprints";
+import {
+  createModeratorReviewRepository,
+  type ModeratorReviewRepository,
+} from "./moderator-reviews";
 
 export type Storage = {
   isAvailable(): boolean;
@@ -24,6 +28,7 @@ export type Storage = {
   incidents: IncidentRepository;
   fingerprints: FingerprintRepository;
   perceptualFingerprints: PerceptualFingerprintRepository;
+  moderatorReviews: ModeratorReviewRepository;
   close(): void;
 };
 
@@ -59,6 +64,7 @@ export function openStorage(
     incidents: createIncidentRepository(database),
     fingerprints: createFingerprintRepository(database),
     perceptualFingerprints: createPerceptualFingerprintRepository(database),
+    moderatorReviews: createModeratorReviewRepository(database),
     close: () => sqlite.close(true),
   };
 }

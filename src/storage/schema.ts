@@ -79,3 +79,16 @@ export const perceptualFingerprints = sqliteTable("perceptual_fingerprints", {
   quality: integer("quality").notNull(),
   crops: text("crops", { mode: "json" }).$type<string[]>().notNull(),
 });
+
+export const moderatorReviews = sqliteTable("moderator_reviews", {
+  id: text("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  incidentMessageId: text("incident_message_id").notNull(),
+  action: text("action", {
+    enum: ["false-positive", "images-safe", "reversal"],
+  }).notNull(),
+  moderatorId: text("moderator_id").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  reversesReviewId: text("reverses_review_id"),
+  effects: text("effects", { mode: "json" }).$type<unknown>().notNull(),
+});
