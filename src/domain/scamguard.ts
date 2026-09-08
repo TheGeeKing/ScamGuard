@@ -249,12 +249,14 @@ export function createScamGuard(ports: Ports): {
         if (!current) return { kind: "accepted" };
         const settings = await ports.getSettings(event.guildId);
         const enforcePerceptual = event.proposedScore >= 85;
+        const perceptualWeight =
+          event.proposedScore === 30 ? 0 : event.proposedScore;
         const signals = activeSignals([
           ...current.signals,
           {
             key: "similar-image",
             group: "perceptual-observation",
-            weight: event.proposedScore,
+            weight: perceptualWeight,
           },
         ]);
         const score = signals.reduce(

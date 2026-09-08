@@ -491,7 +491,7 @@ describe("ScamGuard dispatch", () => {
     expect(incidents).toHaveLength(1);
   });
 
-  test("keeps a late score-30 perceptual match below the alert threshold", async () => {
+  test("keeps weak perceptual similarity observation-only beside scoring Signals", async () => {
     let enforcementCalls = 0;
     let incidentSaves = 0;
     let notifications = 0;
@@ -515,7 +515,7 @@ describe("ScamGuard dispatch", () => {
       messageId: "message-1",
       userId: "user-1",
       imageEvidence: [{ sourceId: "image-1", sha256: "a" }],
-      signals: [],
+      signals: [{ key: "spread", group: "channel-spread", weight: 50 }],
     });
 
     const outcome = await app.dispatch({
@@ -528,11 +528,16 @@ describe("ScamGuard dispatch", () => {
       matches: [{ sourceSha256: "known", distance: 40, strength: "weak" }],
     });
 
-    expect(outcome.assessment?.score).toBe(30);
-    expect(outcome.assessment?.intention).toBe("allow");
+    expect(outcome.assessment?.signals).toContainEqual({
+      key: "similar-image",
+      group: "perceptual-observation",
+      weight: 0,
+    });
+    expect(outcome.assessment?.score).toBe(50);
+    expect(outcome.assessment?.intention).toBe("suspicious");
     expect(enforcementCalls).toBe(1);
-    expect(incidentSaves).toBe(0);
-    expect(notifications).toBe(0);
+    expect(incidentSaves).toBe(2);
+    expect(notifications).toBe(2);
   });
 
   test("alerts for a late score-60 perceptual match without enforcement", async () => {
