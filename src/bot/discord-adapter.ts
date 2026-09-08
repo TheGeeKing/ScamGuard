@@ -101,8 +101,9 @@ export function classifyMessageUpdate(
 
 export function shouldAssessMessageUpdate(
   cause: MessageUpdateClassification["cause"],
+  skippedCauses: ReadonlySet<MessageUpdateClassification["cause"]>,
 ): boolean {
-  return cause !== "embeds-only" && cause !== "no-relevant-change";
+  return !skippedCauses.has(cause);
 }
 
 function messageUpdateSnapshot(message: Message): MessageUpdateSnapshot {
@@ -501,6 +502,7 @@ export function createDiscordBot(options: {
   >;
   databaseAvailable(): boolean;
   ignoredEmbedHosts?: string[];
+  skippedMessageUpdateCauses?: MessageUpdateClassification["cause"][];
   onEligibleMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
   ): Promise<void> | void;
@@ -526,6 +528,14 @@ export function createDiscordBot(options: {
   const incidentAlertLocks = new Map<string, Promise<void>>();
   const ignoredEmbedHosts = new Set(
     (options.ignoredEmbedHosts ?? []).map((host) => host.toLowerCase()),
+  );
+  const skippedMessageUpdateCauses = new Set<
+    MessageUpdateClassification["cause"]
+  >(
+    options.skippedMessageUpdateCauses ?? [
+      "embeds-only",
+      "no-relevant-change",
+    ],
   );
 
   client.once("clientReady", async () => {
@@ -736,7 +746,13 @@ export function createDiscordBot(options: {
       attachmentCount: current.attachments.size,
       embedCount: current.embeds.length,
     });
-    if (!shouldAssessMessageUpdate(classification.cause)) return;
+    if (
+      !shouldAssessMessageUpdate(
+        classification.cause,
+        skippedMessageUpdateCauses,
+      )
+    )
+      return;
     await handleMessage(current, true);
   });
 

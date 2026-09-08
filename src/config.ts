@@ -1,6 +1,9 @@
 import type { LogLevel } from "./logging";
 
 export type ModerationMode = "dry-run" | "delete" | "enforce";
+export type SkippableMessageUpdateCause =
+  | "embeds-only"
+  | "no-relevant-change";
 
 export type AppConfig = {
   discordToken: string;
@@ -24,6 +27,7 @@ export type AppConfig = {
   moderationMode: ModerationMode;
   logLevel: LogLevel;
   ignoredEmbedHosts: string[];
+  skippedMessageUpdateCauses: SkippableMessageUpdateCause[];
 };
 
 function readInteger(
@@ -98,6 +102,29 @@ export function loadConfig(
         .filter(Boolean),
     ),
   ];
+  const supportedUpdateCauses = new Set<SkippableMessageUpdateCause>([
+    "embeds-only",
+    "no-relevant-change",
+  ]);
+  const skippedMessageUpdateCauses = [
+    ...new Set(
+      (environment.SKIPPED_MESSAGE_UPDATE_CAUSES ??
+        "embeds-only,no-relevant-change")
+        .split(",")
+        .map((cause) => cause.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (
+    skippedMessageUpdateCauses.some(
+      (cause) =>
+        !supportedUpdateCauses.has(cause as SkippableMessageUpdateCause),
+    )
+  ) {
+    throw new Error(
+      "SKIPPED_MESSAGE_UPDATE_CAUSES contains unsupported cause",
+    );
+  }
 
   return {
     discordToken: environment.DISCORD_TOKEN as string,
@@ -157,5 +184,7 @@ export function loadConfig(
     moderationMode: moderationMode as ModerationMode,
     logLevel: logLevel as LogLevel,
     ignoredEmbedHosts,
+    skippedMessageUpdateCauses:
+      skippedMessageUpdateCauses as SkippableMessageUpdateCause[],
   };
 }

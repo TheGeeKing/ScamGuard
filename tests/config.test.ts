@@ -30,6 +30,7 @@ describe("application configuration", () => {
       moderationMode: "dry-run",
       logLevel: "info",
       ignoredEmbedHosts: [],
+      skippedMessageUpdateCauses: ["embeds-only", "no-relevant-change"],
     });
   });
 
@@ -66,5 +67,15 @@ describe("application configuration", () => {
         IGNORED_EMBED_HOSTS: " i.ytimg.com, YOUTUBE.COM, i.ytimg.com ",
       }).ignoredEmbedHosts,
     ).toEqual(["i.ytimg.com", "youtube.com"]);
+    expect(
+      loadConfig({ ...required, SKIPPED_MESSAGE_UPDATE_CAUSES: "" })
+        .skippedMessageUpdateCauses,
+    ).toEqual([]);
+    expect(() =>
+      loadConfig({
+        ...required,
+        SKIPPED_MESSAGE_UPDATE_CAUSES: "embeds-only,something-else",
+      }),
+    ).toThrow("SKIPPED_MESSAGE_UPDATE_CAUSES contains unsupported cause");
   });
 });

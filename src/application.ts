@@ -126,6 +126,7 @@ export function createApplication(
     incidents: storage.incidents,
     databaseAvailable: storage.isAvailable,
     ignoredEmbedHosts: config.ignoredEmbedHosts,
+    skippedMessageUpdateCauses: config.skippedMessageUpdateCauses,
     onSettingsChanged: refreshSettings,
     onEligibleMessage: (event) =>
       acceptingMessages ? track(() => dispatchMessage(event)) : undefined,

@@ -64,12 +64,16 @@ describe("Discord adapter", () => {
   });
 
   test("assesses authored changes but skips embed-only and redundant updates", () => {
-    expect(shouldAssessMessageUpdate("authored-content")).toBe(true);
-    expect(shouldAssessMessageUpdate("attachments")).toBe(true);
-    expect(shouldAssessMessageUpdate("multiple")).toBe(true);
-    expect(shouldAssessMessageUpdate("unknown")).toBe(true);
-    expect(shouldAssessMessageUpdate("embeds-only")).toBe(false);
-    expect(shouldAssessMessageUpdate("no-relevant-change")).toBe(false);
+    const skipped = new Set(["embeds-only", "no-relevant-change"] as const);
+    expect(shouldAssessMessageUpdate("authored-content", skipped)).toBe(true);
+    expect(shouldAssessMessageUpdate("attachments", skipped)).toBe(true);
+    expect(shouldAssessMessageUpdate("multiple", skipped)).toBe(true);
+    expect(shouldAssessMessageUpdate("unknown", skipped)).toBe(true);
+    expect(shouldAssessMessageUpdate("embeds-only", skipped)).toBe(false);
+    expect(shouldAssessMessageUpdate("no-relevant-change", skipped)).toBe(
+      false,
+    );
+    expect(shouldAssessMessageUpdate("embeds-only", new Set())).toBe(true);
   });
 
   test("links directly to the triggering Discord message in Incident notifications", () => {

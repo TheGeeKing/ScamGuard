@@ -29,6 +29,7 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 | `IMAGE_DOWNLOAD_TIMEOUT_MS` | `10000` | Image download deadline |
 | `EXTERNAL_IMAGE_FETCH_ENABLED` | `true` | Guarded external embed fetching |
 | `IGNORED_EMBED_HOSTS` | empty | Comma-separated origin hosts whose embed images are skipped, e.g. `i.ytimg.com` |
+| `SKIPPED_MESSAGE_UPDATE_CAUSES` | `embeds-only,no-relevant-change` | Comma-separated update causes to log without reassessing; set empty to reassess both |
 | `PERCEPTUAL_QUEUE_MAX_JOBS` | `32` | Maximum active and queued analyses |
 | `PERCEPTUAL_QUEUE_MAX_BYTES` | `67108864` | Maximum encoded bytes held by analyses |
 | `PERCEPTUAL_MAX_JOBS_PER_USER` | `4` | Outstanding analyses per guild/user |
