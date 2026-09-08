@@ -28,6 +28,7 @@ describe("application configuration", () => {
       healthHost: "127.0.0.1",
       healthPort: 3000,
       moderationMode: "dry-run",
+      logLevel: "info",
     });
   });
 
@@ -54,6 +55,9 @@ describe("application configuration", () => {
     ).toThrow("EXTERNAL_IMAGE_FETCH_ENABLED must be true or false");
     expect(() => loadConfig({ ...required, HEALTH_HOST: " " })).toThrow(
       "HEALTH_HOST must not be empty",
+    );
+    expect(() => loadConfig({ ...required, LOG_LEVEL: "verbose" })).toThrow(
+      "LOG_LEVEL must be debug, info, warn, or error",
     );
   });
 });

@@ -46,6 +46,78 @@ export type MessageIdentity = {
   memberRoleIds: string[];
 };
 
+export type MessageUpdateSnapshot = {
+  partial: boolean;
+  content: string | null;
+  attachmentKeys: string[];
+  embedState: string;
+};
+
+export type MessageUpdateClassification = {
+  cause:
+    | "authored-content"
+    | "attachments"
+    | "embeds-only"
+    | "multiple"
+    | "no-visible-change"
+    | "unknown";
+  contentChanged: boolean | null;
+  attachmentsChanged: boolean | null;
+  embedsChanged: boolean | null;
+};
+
+export function classifyMessageUpdate(
+  previous: MessageUpdateSnapshot,
+  current: MessageUpdateSnapshot,
+): MessageUpdateClassification {
+  if (previous.partial || current.partial) {
+    return {
+      cause: "unknown",
+      contentChanged: null,
+      attachmentsChanged: null,
+      embedsChanged: null,
+    };
+  }
+  const contentChanged = previous.content !== current.content;
+  const attachmentsChanged =
+    JSON.stringify(previous.attachmentKeys) !==
+    JSON.stringify(current.attachmentKeys);
+  const embedsChanged = previous.embedState !== current.embedState;
+  const changed = [contentChanged, attachmentsChanged, embedsChanged].filter(
+    Boolean,
+  ).length;
+  const cause =
+    changed > 1
+      ? "multiple"
+      : contentChanged
+        ? "authored-content"
+        : attachmentsChanged
+          ? "attachments"
+          : embedsChanged
+            ? "embeds-only"
+            : "no-visible-change";
+  return { cause, contentChanged, attachmentsChanged, embedsChanged };
+}
+
+function messageUpdateSnapshot(message: Message): MessageUpdateSnapshot {
+  return {
+    partial: message.partial,
+    content: message.content,
+    attachmentKeys: message.attachments
+      .map((attachment) =>
+        [
+          attachment.id,
+          attachment.contentType ?? "",
+          attachment.size,
+          attachment.width ?? "",
+          attachment.height ?? "",
+        ].join(":"),
+      )
+      .sort(),
+    embedState: JSON.stringify(message.embeds.map((embed) => embed.toJSON())),
+  };
+}
+
 export function shouldAssessMessage(
   message: MessageIdentity,
   scope: MessageScope,
@@ -626,11 +698,28 @@ export function createDiscordBot(options: {
     await handleMessage(message);
   });
 
-  client.on("messageUpdate", async (_previous, message) => {
-    await handleMessage(
-      message.partial ? await message.fetch() : message,
-      true,
+  client.on("messageUpdate", async (previous, message) => {
+    const current = message.partial ? await message.fetch() : message;
+    const classification = classifyMessageUpdate(
+      messageUpdateSnapshot(previous as Message),
+      messageUpdateSnapshot(current),
     );
+    writeLog("debug", "discord.message-update.received", {
+      guildId: current.guildId,
+      messageId: current.id,
+      cause: classification.cause,
+      contentChanged: classification.contentChanged,
+      attachmentsChanged: classification.attachmentsChanged,
+      embedsChanged: classification.embedsChanged,
+      previousPartial: previous.partial,
+      currentWasPartial: message.partial,
+      messageAgeMs: Math.max(0, Date.now() - current.createdTimestamp),
+      createdTimestamp: current.createdTimestamp,
+      editedTimestamp: current.editedTimestamp,
+      attachmentCount: current.attachments.size,
+      embedCount: current.embeds.length,
+    });
+    await handleMessage(current, true);
   });
 
   return {

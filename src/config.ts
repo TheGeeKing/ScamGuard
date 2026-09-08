@@ -1,3 +1,5 @@
+import type { LogLevel } from "./logging";
+
 export type ModerationMode = "dry-run" | "delete" | "enforce";
 
 export type AppConfig = {
@@ -20,6 +22,7 @@ export type AppConfig = {
   healthHost: string;
   healthPort: number;
   moderationMode: ModerationMode;
+  logLevel: LogLevel;
 };
 
 function readInteger(
@@ -66,6 +69,11 @@ export function loadConfig(
     )
   ) {
     throw new Error("MODERATION_MODE must be dry-run, delete, or enforce");
+  }
+
+  const logLevel = environment.LOG_LEVEL ?? "info";
+  if (!( ["debug", "info", "warn", "error"] as const).includes(logLevel as LogLevel)) {
+    throw new Error("LOG_LEVEL must be debug, info, warn, or error");
   }
 
   const suspiciousScore = readInteger(environment, "SUSPICIOUS_SCORE", 50);
@@ -138,5 +146,6 @@ export function loadConfig(
     healthHost,
     healthPort: readInteger(environment, "HEALTH_PORT", 3000, 65_535),
     moderationMode: moderationMode as ModerationMode,
+    logLevel: logLevel as LogLevel,
   };
 }

@@ -19,6 +19,7 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 | --- | --- | --- |
 | `DATABASE_PATH` | `data/scamguard.db` | SQLite database path |
 | `MODERATION_MODE` | `dry-run` | `dry-run`, `delete`, or `enforce` |
+| `LOG_LEVEL` | `info` | Minimum structured log level: `debug`, `info`, `warn`, or `error` |
 | `SUSPICIOUS_SCORE` | `50` | Suspicious threshold |
 | `DELETE_SCORE` | `70` | Message deletion threshold |
 | `TIMEOUT_SCORE` | `100` | Member timeout threshold |

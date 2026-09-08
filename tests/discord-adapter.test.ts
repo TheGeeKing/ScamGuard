@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { GatewayIntentBits, type Message } from "discord.js";
 import {
   announceModerationLogChannel,
+  classifyMessageUpdate,
   discordGatewayIntents,
   incidentNotification,
   moderationLogChannelNotice,
@@ -13,6 +14,54 @@ import {
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
+  test("classifies embed-only updates without logging message content", () => {
+    expect(
+      classifyMessageUpdate(
+        {
+          partial: false,
+          content: "https://example.com",
+          attachmentKeys: [],
+          embedState: "old-preview",
+        },
+        {
+          partial: false,
+          content: "https://example.com",
+          attachmentKeys: [],
+          embedState: "new-preview",
+        },
+      ),
+    ).toEqual({
+      cause: "embeds-only",
+      contentChanged: false,
+      attachmentsChanged: false,
+      embedsChanged: true,
+    });
+  });
+
+  test("reports unknown update differences when the previous message is partial", () => {
+    expect(
+      classifyMessageUpdate(
+        {
+          partial: true,
+          content: null,
+          attachmentKeys: [],
+          embedState: "[]",
+        },
+        {
+          partial: false,
+          content: "hello",
+          attachmentKeys: [],
+          embedState: "[]",
+        },
+      ),
+    ).toEqual({
+      cause: "unknown",
+      contentChanged: null,
+      attachmentsChanged: null,
+      embedsChanged: null,
+    });
+  });
+
   test("links directly to the triggering Discord message in Incident notifications", () => {
     const incident: Parameters<typeof incidentNotification>[0] = {
       guildId: "guild-1",

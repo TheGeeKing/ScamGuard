@@ -18,7 +18,7 @@ import {
   isApprovedDiscordMediaUrl,
 } from "./images/discord-images";
 import { fetchExternalImage } from "./images/external-fetch";
-import { writeLog } from "./logging";
+import { setLogLevel, writeLog } from "./logging";
 import type { PerceptualReference } from "./perceptual/matcher";
 import { matchPerceptual } from "./perceptual/matcher";
 import { createPerceptualQueue } from "./perceptual/queue";
@@ -43,6 +43,7 @@ export function createApplication(
   environment: Record<string, string | undefined>,
 ): Application {
   const config = loadConfig(environment);
+  setLogLevel(config.logLevel);
   const storage = openStorage(config.databasePath, {
     moderationMode: config.moderationMode,
     suspiciousScore: config.suspiciousScore,
