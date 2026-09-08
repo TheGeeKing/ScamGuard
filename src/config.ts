@@ -23,6 +23,7 @@ export type AppConfig = {
   healthPort: number;
   moderationMode: ModerationMode;
   logLevel: LogLevel;
+  ignoredEmbedHosts: string[];
 };
 
 function readInteger(
@@ -89,6 +90,14 @@ export function loadConfig(
   if (!healthHost) {
     throw new Error("HEALTH_HOST must not be empty");
   }
+  const ignoredEmbedHosts = [
+    ...new Set(
+      (environment.IGNORED_EMBED_HOSTS ?? "")
+        .split(",")
+        .map((host) => host.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
 
   return {
     discordToken: environment.DISCORD_TOKEN as string,
@@ -147,5 +156,6 @@ export function loadConfig(
     healthPort: readInteger(environment, "HEALTH_PORT", 3000, 65_535),
     moderationMode: moderationMode as ModerationMode,
     logLevel: logLevel as LogLevel,
+    ignoredEmbedHosts,
   };
 }

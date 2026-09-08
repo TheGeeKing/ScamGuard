@@ -50,6 +50,7 @@ export function canFetchImageSource(
 
 export function selectDiscordImageSources(
   message: DiscordMessageMedia,
+  ignoredEmbedHosts: ReadonlySet<string> = new Set(),
 ): ImageSource[] {
   const sources: ImageSource[] = message.attachments
     .filter((attachment) => attachment.contentType?.startsWith("image/"))
@@ -64,6 +65,13 @@ export function selectDiscordImageSources(
       ["thumbnail", embed.thumbnail],
     ] as const) {
       if (!media) continue;
+      let originHost: string;
+      try {
+        originHost = new URL(media.url).hostname.toLowerCase();
+      } catch {
+        continue;
+      }
+      if (ignoredEmbedHosts.has(originHost)) continue;
       const url =
         media.proxyUrl && isApprovedDiscordMediaUrl(media.proxyUrl)
           ? media.proxyUrl

@@ -125,6 +125,7 @@ export function createApplication(
     settings: storage.guildSettings,
     incidents: storage.incidents,
     databaseAvailable: storage.isAvailable,
+    ignoredEmbedHosts: config.ignoredEmbedHosts,
     onSettingsChanged: refreshSettings,
     onEligibleMessage: (event) =>
       acceptingMessages ? track(() => dispatchMessage(event)) : undefined,

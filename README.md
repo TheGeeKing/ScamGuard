@@ -28,6 +28,7 @@ Only `DISCORD_TOKEN` and `GUILD_ID` are required. Guild overrides set through `/
 | `MAX_IMAGE_BYTES` | `10485760` | Maximum bytes per image |
 | `IMAGE_DOWNLOAD_TIMEOUT_MS` | `10000` | Image download deadline |
 | `EXTERNAL_IMAGE_FETCH_ENABLED` | `true` | Guarded external embed fetching |
+| `IGNORED_EMBED_HOSTS` | empty | Comma-separated origin hosts whose embed images are skipped, e.g. `i.ytimg.com` |
 | `PERCEPTUAL_QUEUE_MAX_JOBS` | `32` | Maximum active and queued analyses |
 | `PERCEPTUAL_QUEUE_MAX_BYTES` | `67108864` | Maximum encoded bytes held by analyses |
 | `PERCEPTUAL_MAX_JOBS_PER_USER` | `4` | Outstanding analyses per guild/user |

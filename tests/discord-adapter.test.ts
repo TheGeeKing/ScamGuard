@@ -11,6 +11,7 @@ import {
   runOnboarding,
   shouldAssessMessage,
   toScamGuardMessageEvent,
+  shouldAssessMessageUpdate,
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
@@ -60,6 +61,15 @@ describe("Discord adapter", () => {
       attachmentsChanged: null,
       embedsChanged: null,
     });
+  });
+
+  test("assesses authored changes but skips embed-only and redundant updates", () => {
+    expect(shouldAssessMessageUpdate("authored-content")).toBe(true);
+    expect(shouldAssessMessageUpdate("attachments")).toBe(true);
+    expect(shouldAssessMessageUpdate("multiple")).toBe(true);
+    expect(shouldAssessMessageUpdate("unknown")).toBe(true);
+    expect(shouldAssessMessageUpdate("embeds-only")).toBe(false);
+    expect(shouldAssessMessageUpdate("no-relevant-change")).toBe(false);
   });
 
   test("links directly to the triggering Discord message in Incident notifications", () => {

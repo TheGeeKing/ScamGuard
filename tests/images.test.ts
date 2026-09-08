@@ -66,6 +66,25 @@ describe("Discord image fingerprinting", () => {
     expect(canFetchImageSource(external, false)).toBe(false);
   });
 
+  test("skips embed media whose origin host is ignored", () => {
+    expect(
+      selectDiscordImageSources(
+        {
+          attachments: [],
+          embeds: [
+            {
+              thumbnail: {
+                url: "https://i.ytimg.com/vi/video/hqdefault.jpg",
+                proxyUrl: "https://media.discordapp.net/external/proxy.jpg",
+              },
+            },
+          ],
+        },
+        new Set(["i.ytimg.com"]),
+      ),
+    ).toEqual([]);
+  });
+
   test("streams every image with bounded concurrency and isolates failures", async () => {
     let active = 0;
     let maximumActive = 0;

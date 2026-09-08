@@ -59,7 +59,7 @@ export type MessageUpdateClassification = {
     | "attachments"
     | "embeds-only"
     | "multiple"
-    | "no-visible-change"
+    | "no-relevant-change"
     | "unknown";
   contentChanged: boolean | null;
   attachmentsChanged: boolean | null;
@@ -95,8 +95,14 @@ export function classifyMessageUpdate(
           ? "attachments"
           : embedsChanged
             ? "embeds-only"
-            : "no-visible-change";
+            : "no-relevant-change";
   return { cause, contentChanged, attachmentsChanged, embedsChanged };
+}
+
+export function shouldAssessMessageUpdate(
+  cause: MessageUpdateClassification["cause"],
+): boolean {
+  return cause !== "embeds-only" && cause !== "no-relevant-change";
 }
 
 function messageUpdateSnapshot(message: Message): MessageUpdateSnapshot {
@@ -131,7 +137,10 @@ export function shouldAssessMessage(
   );
 }
 
-function messageImageSources(message: Message): ImageSource[] {
+function messageImageSources(
+  message: Message,
+  ignoredEmbedHosts: ReadonlySet<string> = new Set(),
+): ImageSource[] {
   return selectDiscordImageSources({
     attachments: message.attachments.map((attachment) => ({
       id: attachment.id,
@@ -148,14 +157,15 @@ function messageImageSources(message: Message): ImageSource[] {
       authorIconUrl: embed.author?.iconURL,
       footerIconUrl: embed.footer?.iconURL,
     })),
-  });
+  }, ignoredEmbedHosts);
 }
 
 export function toScamGuardMessageEvent(
   message: Message,
   isEdit = false,
+  ignoredEmbedHosts: ReadonlySet<string> = new Set(),
 ): Extract<ScamGuardEvent, { kind: "message" }> {
-  const imageSources = messageImageSources(message);
+  const imageSources = messageImageSources(message, ignoredEmbedHosts);
   return {
     kind: "message",
     guildId: message.guildId as string,
@@ -490,6 +500,7 @@ export function createDiscordBot(options: {
     | "setNotificationMessageId"
   >;
   databaseAvailable(): boolean;
+  ignoredEmbedHosts?: string[];
   onEligibleMessage?(
     event: Extract<ScamGuardEvent, { kind: "message" }>,
   ): Promise<void> | void;
@@ -513,6 +524,9 @@ export function createDiscordBot(options: {
     partials: [Partials.Channel, Partials.Message],
   });
   const incidentAlertLocks = new Map<string, Promise<void>>();
+  const ignoredEmbedHosts = new Set(
+    (options.ignoredEmbedHosts ?? []).map((host) => host.toLowerCase()),
+  );
 
   client.once("clientReady", async () => {
     const instructions =
@@ -604,7 +618,10 @@ export function createDiscordBot(options: {
         guildId: interaction.guildId,
         moderatorId: interaction.user.id,
         messageId: interaction.targetMessage.id,
-        imageSources: messageImageSources(interaction.targetMessage),
+        imageSources: messageImageSources(
+          interaction.targetMessage,
+          ignoredEmbedHosts,
+        ),
       });
       await interaction.editReply(
         content ?? "Fingerprint review is unavailable.",
@@ -689,7 +706,7 @@ export function createDiscordBot(options: {
       )
     ) {
       await options.onEligibleMessage?.(
-        toScamGuardMessageEvent(message, isEdit),
+        toScamGuardMessageEvent(message, isEdit, ignoredEmbedHosts),
       );
     }
   };
@@ -719,6 +736,7 @@ export function createDiscordBot(options: {
       attachmentCount: current.attachments.size,
       embedCount: current.embeds.length,
     });
+    if (!shouldAssessMessageUpdate(classification.cause)) return;
     await handleMessage(current, true);
   });
 

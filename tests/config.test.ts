@@ -29,6 +29,7 @@ describe("application configuration", () => {
       healthPort: 3000,
       moderationMode: "dry-run",
       logLevel: "info",
+      ignoredEmbedHosts: [],
     });
   });
 
@@ -59,5 +60,11 @@ describe("application configuration", () => {
     expect(() => loadConfig({ ...required, LOG_LEVEL: "verbose" })).toThrow(
       "LOG_LEVEL must be debug, info, warn, or error",
     );
+    expect(
+      loadConfig({
+        ...required,
+        IGNORED_EMBED_HOSTS: " i.ytimg.com, YOUTUBE.COM, i.ytimg.com ",
+      }).ignoredEmbedHosts,
+    ).toEqual(["i.ytimg.com", "youtube.com"]);
   });
 });
