@@ -40,6 +40,17 @@ _Avoid_: Alert, log entry
 An Incident that a moderator has explicitly reviewed and determined was legitimate.
 _Avoid_: Error, safe fingerprint
 
+**Moderator review**:
+A durable, attributed decision about an Incident or its image evidence. Reviews
+are retained even when reversed so the moderation history remains explainable.
+_Avoid_: Toggle, current flag
+
+**Review reversal**:
+A Moderator review that withdraws a prior review without erasing it. A reversal
+does not repeat past Discord enforcement and cannot override a newer review of
+the same evidence.
+_Avoid_: Delete review, undo moderation
+
 **Cleanup window**:
 The five minutes preceding an enforcement decision during which every tracked message from the affected member is eligible for deletion.
 _Avoid_: History scan, channel purge
