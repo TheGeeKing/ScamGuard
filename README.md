@@ -42,6 +42,16 @@ and how the configurable decision thresholds affect alerts and enforcement.
 The version-controlled [Text rules](docs/text-rules.md) document the scam
 phrases assessed on new and edited messages.
 
+Message updates are classified from the gateway payload before fetching the
+message, including when the message is absent from the bot cache. Content or
+attachment updates need an edit timestamp within the last five minutes to be
+treated as authored edits; older snapshots and metadata updates follow the
+`embeds-only` or `no-relevant-change` policy. Consequently, delayed edits older
+than five minutes are skipped by default. An empty skip list explicitly allows
+historical updates to be assessed again. `LOG_LEVEL=debug` records supplied field
+names, the edit timestamp, and the assessment decision without message content.
+Compose forwards these settings; recreate the container after changing them.
+
 `/scam` provides `status`, `mode`, `thresholds`, `timeout`, `retention`, `log-channel`, `ignore-channel`, `trusted-role`, and `false-positive`. Successful setting changes are visible in-channel; status and errors are ephemeral. Moderators can also use **Mark as scam** and **Mark as safe** from a message context menu.
 
 Incident notifications use a Components V2 layout with **False positive** and **Mark images safe** actions and tag the flagged user.

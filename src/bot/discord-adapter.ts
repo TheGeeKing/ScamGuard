@@ -106,23 +106,21 @@ export function shouldAssessMessageUpdate(
   return !skippedCauses.has(cause);
 }
 
-function messageUpdateSnapshot(message: Message): MessageUpdateSnapshot {
-  return {
-    partial: message.partial,
-    content: message.content,
-    attachmentKeys: message.attachments
-      .map((attachment) =>
-        [
-          attachment.id,
-          attachment.contentType ?? "",
-          attachment.size,
-          attachment.width ?? "",
-          attachment.height ?? "",
-        ].join(":"),
-      )
-      .sort(),
-    embedState: JSON.stringify(message.embeds.map((embed) => embed.toJSON())),
-  };
+export function classifyGatewayUpdate(
+  data: Record<string, unknown>,
+  now = Date.now(),
+): MessageUpdateClassification["cause"] {
+  // Full historical snapshots can contain content without representing a new edit.
+  const editedAt = typeof data.edited_timestamp === "string"
+    ? Date.parse(data.edited_timestamp)
+    : Number.NaN;
+  const freshEdit = Number.isFinite(editedAt) &&
+    editedAt <= now + 60_000 && editedAt >= now - 5 * 60_000;
+  if (freshEdit && ("content" in data || "attachments" in data)) {
+    return "content" in data ? "authored-content" : "attachments";
+  }
+  if ("embeds" in data) return "embeds-only";
+  return "no-relevant-change";
 }
 
 export function shouldAssessMessage(
@@ -725,35 +723,29 @@ export function createDiscordBot(options: {
     await handleMessage(message);
   });
 
-  client.on("messageUpdate", async (previous, message) => {
-    const current = message.partial ? await message.fetch() : message;
-    const classification = classifyMessageUpdate(
-      messageUpdateSnapshot(previous as Message),
-      messageUpdateSnapshot(current),
-    );
+  client.on("raw", async (packet) => {
+    if (packet.t !== "MESSAGE_UPDATE") return;
+    const data = packet.d;
+    if (data.guild_id !== options.guildId) return;
+    const cause = classifyGatewayUpdate(data);
+    const assess = shouldAssessMessageUpdate(cause, skippedMessageUpdateCauses);
     writeLog("debug", "discord.message-update.received", {
-      guildId: current.guildId,
-      messageId: current.id,
-      cause: classification.cause,
-      contentChanged: classification.contentChanged,
-      attachmentsChanged: classification.attachmentsChanged,
-      embedsChanged: classification.embedsChanged,
-      previousPartial: previous.partial,
-      currentWasPartial: message.partial,
-      messageAgeMs: Math.max(0, Date.now() - current.createdTimestamp),
-      createdTimestamp: current.createdTimestamp,
-      editedTimestamp: current.editedTimestamp,
-      attachmentCount: current.attachments.size,
-      embedCount: current.embeds.length,
+      guildId: data.guild_id ?? null,
+      messageId: data.id,
+      cause,
+      assessed: assess,
+      suppliedFields: Object.keys(data).sort().join(","),
+      editedTimestamp: data.edited_timestamp ?? null,
     });
-    if (
-      !shouldAssessMessageUpdate(
-        classification.cause,
-        skippedMessageUpdateCauses,
-      )
-    )
-      return;
-    await handleMessage(current, true);
+    if (!assess) return;
+    try {
+      const channel = await client.channels.fetch(data.channel_id);
+      if (!channel?.isTextBased() || !("messages" in channel)) return;
+      const current = await channel.messages.fetch({ message: data.id, force: true });
+      await handleMessage(current, true);
+    } catch {
+      writeLog("warn", "discord.message-update.failed", { messageId: data.id });
+    }
   });
 
   return {

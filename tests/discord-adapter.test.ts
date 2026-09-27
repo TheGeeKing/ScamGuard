@@ -3,6 +3,7 @@ import { GatewayIntentBits, type Message } from "discord.js";
 import {
   announceModerationLogChannel,
   classifyMessageUpdate,
+  classifyGatewayUpdate,
   discordGatewayIntents,
   incidentNotification,
   moderationLogChannelNotice,
@@ -15,6 +16,15 @@ import {
 } from "../src/bot/discord-adapter";
 
 describe("Discord adapter", () => {
+  test("classifies uncached historical gateway updates before fetching content", () => {
+    const now = Date.parse("2026-09-27T12:00:00Z");
+    expect(classifyGatewayUpdate({ embeds: [] }, now)).toBe("embeds-only");
+    expect(classifyGatewayUpdate({ content: "@everyone", edited_timestamp: "2020-01-01T00:00:00Z" }, now)).toBe("no-relevant-change");
+    expect(classifyGatewayUpdate({ content: "@here", edited_timestamp: null, embeds: [] }, now)).toBe("embeds-only");
+    expect(classifyGatewayUpdate({ pinned: true }, now)).toBe("no-relevant-change");
+    expect(classifyGatewayUpdate({ content: "edited", edited_timestamp: "2026-09-27T11:59:59Z" }, now)).toBe("authored-content");
+    expect(classifyGatewayUpdate({ attachments: [], edited_timestamp: "2026-09-27T11:59:59Z" }, now)).toBe("attachments");
+  });
   test("classifies embed-only updates without logging message content", () => {
     expect(
       classifyMessageUpdate(
